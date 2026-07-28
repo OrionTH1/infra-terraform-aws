@@ -38,15 +38,31 @@ Tudo dentro de uma VPC dedicada, com subnets públicas (ALB, NAT Gateway) e priv
 
 - VPC dedicada ao projeto, CIDR próprio (ex.: `10.0.0.0/16`).
 - Subnets públicas e privadas em 2–3 Availability Zones.
-- Subnets públicas: hospedam o ALB e o(s) NAT Gateway(s).
-- Subnets privadas: hospedam as tasks ECS e as instâncias/writer do Aurora.
+- Subnets públicas: hospedam apenas o ALB.
+- Subnets privadas: hospedam as tasks ECS e as instâncias/writer do Aurora — **sem rota para internet**.
 - Internet Gateway anexado à VPC para as subnets públicas.
-- NAT Gateway(s) nas subnets públicas para dar saída de internet às tasks privadas (pull de imagens, chamadas externas). Considerar 1 NAT por AZ para HA real, ou 1 único NAT para economizar custo (documentar o trade-off escolhido).
-- Route tables separadas para público (rota para IGW) e privado (rota para NAT).
+- **Sem NAT Gateway**: a API não faz chamadas de saída para serviços externos (só responde `/api/health`), então não há necessidade de dar saída geral de internet às subnets privadas. Em vez de NAT, o acesso a serviços AWS a partir das tasks ECS é feito via **VPC Endpoints (PrivateLink)** — ver seção 1.1. Isso reduz superfície de ataque (subnets privadas 100% isoladas de internet) e evita o custo/complexidade do NAT Gateway. Se no futuro a API precisar chamar uma API de terceiros, essa decisão deve ser revisitada e um NAT Gateway (ou solução equivalente) introduzido.
+- Route tables separadas para público (rota para IGW) e privado (sem rota de saída para internet — só rotas locais da VPC).
 - Security Groups granulares, sem regras `0.0.0.0/0` além do necessário:
   - **SG do ALB**: entrada 443 (e 80 só para redirect) de `0.0.0.0/0`; saída para o SG do ECS na porta da aplicação.
   - **SG do ECS**: entrada apenas do SG do ALB, na porta da aplicação; saída para o SG do RDS e para internet (via NAT) para pulls/chamadas externas.
   - **SG do RDS**: entrada apenas do SG do ECS, na porta do Postgres/MySQL; sem saída necessária além do padrão.
+
+### 1.1. VPC Endpoints (substituindo o NAT Gateway)
+
+Como as subnets privadas não têm rota para internet, as tasks ECS precisam alcançar serviços AWS por dentro da própria rede da AWS, via PrivateLink. Endpoints necessários:
+
+- `com.amazonaws.<region>.ecr.api` (**Interface Endpoint**) — chamadas de API do ECR (autenticação, metadados).
+- `com.amazonaws.<region>.ecr.dkr` (**Interface Endpoint**) — protocolo do Docker registry usado no `pull` da imagem.
+- `com.amazonaws.<region>.s3` (**Gateway Endpoint**, gratuito) — as camadas (layers) da imagem Docker são, na prática, blobs armazenados no S3; o ECR sozinho não entrega isso sem o S3.
+- `com.amazonaws.<region>.logs` (**Interface Endpoint**) — para a task ECS enviar logs ao CloudWatch Logs sem sair pra internet.
+- `com.amazonaws.<region>.secretsmanager` (**Interface Endpoint**) — para a task buscar as credenciais do Aurora em runtime.
+
+Notas de implementação:
+- Interface Endpoints criam uma ENI por AZ dentro das subnets privadas e têm custo por hora + por GB processado (comparável ao NAT, mas só se paga pelos serviços realmente usados).
+- Gateway Endpoints (só existem para S3 e DynamoDB) não têm custo de hora nem de processamento — são associados diretamente às route tables das subnets privadas.
+- Security Group dos Interface Endpoints deve permitir entrada na porta 443 a partir do SG do ECS.
+- O RDS Aurora **não precisa de nenhum endpoint ou rota de saída**: patches, backups e manutenção são geridos pelo *management plane* da AWS, fora da VPC do cliente.
 
 ## 2. Compute — ECS Fargate
 
@@ -158,7 +174,7 @@ ecs-terraform-infra/
 
 Implementar em camadas incrementais, validando cada uma antes de avançar — evita depurar tudo de uma vez:
 
-1. **Rede**: VPC, subnets, route tables, IGW, NAT, security groups vazios (sem regras específicas ainda).
+1. **Rede**: VPC, subnets, route tables, IGW, VPC Endpoints (ECR api/dkr, S3 gateway, Logs, Secrets Manager), security groups vazios (sem regras específicas ainda).
 2. **Banco**: Aurora Serverless v2 + subnet group + Secrets Manager, validando conectividade a partir de uma instância temporária ou bastion.
 3. **Compute sem HTTPS**: ECS Fargate + ALB (só HTTP), API mínima respondendo em `/api/health` — validar o caminho internet → ALB → ECS.
 4. **Conectar API ao banco**: mesmo que a API não use o banco de fato ainda, validar que a task consegue alcançar o Aurora pela rede/SG (ex.: endpoint de health check "estendido" que testa a conexão).
