@@ -21,7 +21,7 @@ provider "aws" {
 }
 
 module "network" {
-  source = "../../network"
+  source = "../../modules/network"
 
   project     = var.project
   environment = var.environment
