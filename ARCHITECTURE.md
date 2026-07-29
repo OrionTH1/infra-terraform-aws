@@ -118,7 +118,7 @@ Notas de implementação:
 
 ## 7. Terraform como código profissional
 
-- **Remote state**: backend S3 com versionamento habilitado + DynamoDB table para lock. Isso sozinho é um dos sinais mais fortes de maturidade em um repo de portfólio.
+- **Remote state**: backend S3 com versionamento habilitado + locking nativo do próprio backend (`use_lockfile = true`, Terraform 1.10+) — sem DynamoDB table, já que o locking via DynamoDB está deprecated pela HashiCorp. Isso sozinho é um dos sinais mais fortes de maturidade em um repo de portfólio.
 - **Estrutura modular**, algo como:
   ```
   modules/
