@@ -25,4 +25,16 @@ module "network" {
 
   project     = var.project
   environment = var.environment
+  app_port    = var.app_port
+}
+
+module "alb" {
+  source = "../../modules/alb"
+
+  project               = var.project
+  environment           = var.environment
+  vpc_id                = module.network.vpc_id
+  public_subnet_ids     = module.network.public_subnet_ids
+  alb_security_group_id = module.network.alb_security_group_id
+  app_port              = var.app_port
 }

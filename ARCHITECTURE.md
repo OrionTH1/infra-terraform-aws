@@ -2,7 +2,7 @@
 
 ## Objetivo do projeto
 
-Este projeto existe para demonstrar proficiência em infraestrutura AWS via Terraform. A aplicação em si é intencionalmente trivial: um servidor Express com um único endpoint, `GET /api/health`, que retorna `200 OK` quando tudo está saudável. Toda a complexidade e o esforço de engenharia devem estar na infraestrutura — rede, segurança, observabilidade, CI/CD e organização do Terraform — não no código da aplicação.
+Este projeto existe para demonstrar proficiência em infraestrutura AWS via Terraform. A aplicação em si é intencionalmente trivial: um servidor Express com um único endpoint, `GET /api/v1/health`, que retorna `200 OK` quando tudo está saudável. Toda a complexidade e o esforço de engenharia devem estar na infraestrutura — rede, segurança, observabilidade, CI/CD e organização do Terraform — não no código da aplicação.
 
 Pense na API como um "canário": ela só precisa existir e responder, para provar que o pipeline completo (build → deploy → rede → load balancer → auto scaling → banco) funciona de ponta a ponta.
 
@@ -24,7 +24,7 @@ Application Load Balancer (subnets públicas, multi-AZ)
    ▼
 ECS Fargate Service (subnets privadas, multi-AZ)
    │  tasks rodando o container Express
-   │  health check do target group em /api/health
+   │  health check do target group em /api/v1/health
    ▼
 Aurora Serverless v2 (subnets privadas, multi-AZ)
    │  credenciais via Secrets Manager
@@ -41,7 +41,7 @@ Tudo dentro de uma VPC dedicada, com subnets públicas (ALB, NAT Gateway) e priv
 - Subnets públicas: hospedam apenas o ALB.
 - Subnets privadas: hospedam as tasks ECS e as instâncias/writer do Aurora — **sem rota para internet**.
 - Internet Gateway anexado à VPC para as subnets públicas.
-- **Sem NAT Gateway**: a API não faz chamadas de saída para serviços externos (só responde `/api/health`), então não há necessidade de dar saída geral de internet às subnets privadas. Em vez de NAT, o acesso a serviços AWS a partir das tasks ECS é feito via **VPC Endpoints (PrivateLink)** — ver seção 1.1. Isso reduz superfície de ataque (subnets privadas 100% isoladas de internet) e evita o custo/complexidade do NAT Gateway. Se no futuro a API precisar chamar uma API de terceiros, essa decisão deve ser revisitada e um NAT Gateway (ou solução equivalente) introduzido.
+- **Sem NAT Gateway**: a API não faz chamadas de saída para serviços externos (só responde `/api/v1/health`), então não há necessidade de dar saída geral de internet às subnets privadas. Em vez de NAT, o acesso a serviços AWS a partir das tasks ECS é feito via **VPC Endpoints (PrivateLink)** — ver seção 1.1. Isso reduz superfície de ataque (subnets privadas 100% isoladas de internet) e evita o custo/complexidade do NAT Gateway. Se no futuro a API precisar chamar uma API de terceiros, essa decisão deve ser revisitada e um NAT Gateway (ou solução equivalente) introduzido.
 - Route tables separadas para público (rota para IGW) e privado (sem rota de saída para internet — só rotas locais da VPC).
 - Security Groups granulares, sem regras `0.0.0.0/0` além do necessário:
   - **SG do ALB**: entrada 443 (e 80 só para redirect) de `0.0.0.0/0`; saída para o SG do ECS na porta da aplicação.
@@ -77,7 +77,7 @@ Notas de implementação:
   - Desired count ≥ 2 para HA real entre AZs.
 - Application Load Balancer:
   - Subnets públicas, multi-AZ.
-  - Target Group com health check apontando para `/api/health` (ajustar threshold/interval para failover rápido, mas sem flapping).
+  - Target Group com health check apontando para `/api/v1/health` (ajustar threshold/interval para failover rápido, mas sem flapping).
   - Listener HTTPS (443) com certificado ACM; listener HTTP (80) redirecionando para HTTPS.
 - Auto Scaling do ECS Service baseado em métrica de CPU/memória (Target Tracking) ou em request count por target do ALB — escolher uma e justificar.
 
@@ -175,8 +175,8 @@ ecs-terraform-infra/
 Implementar em camadas incrementais, validando cada uma antes de avançar — evita depurar tudo de uma vez:
 
 1. **Rede**: VPC, subnets, route tables, IGW, VPC Endpoints (ECR api/dkr, S3 gateway, Logs, Secrets Manager), security groups vazios (sem regras específicas ainda).
-2. **Banco**: Aurora Serverless v2 + subnet group + Secrets Manager, validando conectividade a partir de uma instância temporária ou bastion.
-3. **Compute sem HTTPS**: ECS Fargate + ALB (só HTTP), API mínima respondendo em `/api/health` — validar o caminho internet → ALB → ECS.
+2. **Compute sem HTTPS**: ECS Fargate + ALB (só HTTP), API mínima respondendo em `/api/v1/health` — validar o caminho internet → ALB → ECS.
+3. **Banco**: Aurora Serverless v2 + subnet group + Secrets Manager, validando conectividade a partir da própria task ECS (já em pé desde a etapa anterior) ou de uma instância temporária/bastion.
 4. **Conectar API ao banco**: mesmo que a API não use o banco de fato ainda, validar que a task consegue alcançar o Aurora pela rede/SG (ex.: endpoint de health check "estendido" que testa a conexão).
 5. **HTTPS + domínio**: Route53 + ACM + listener HTTPS, redirect HTTP→HTTPS.
 6. **CI/CD**: workflows de build/push da API e de plan/apply do Terraform.

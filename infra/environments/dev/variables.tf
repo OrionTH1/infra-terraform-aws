@@ -20,3 +20,9 @@ variable "repository" {
   description = "Repository URL, used in the Repository tag."
   default     = "github.com/matheus/ecs-terraform-infra"
 }
+
+variable "app_port" {
+  type        = number
+  description = "Port the application container listens on."
+  default     = 8080
+}

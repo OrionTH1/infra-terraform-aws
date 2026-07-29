@@ -2,7 +2,7 @@ import express, { type Express } from 'express';
 import { globalRoutes } from './routes/global-routes';
 
 const app: Express = express();
-const SERVER_PORT = process.env.SERVER_PORT ?? 5000;
+const SERVER_PORT = process.env.SERVER_PORT ?? 8080;
 
 globalRoutes(app)
 

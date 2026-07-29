@@ -33,3 +33,8 @@ variable "private_subnet_cidrs" {
     "us-east-1b" = "10.0.11.0/24"
   }
 }
+
+variable "app_port" {
+  type        = number
+  description = "Port the application container listens on, used by the ALB->ECS security group rules."
+}
