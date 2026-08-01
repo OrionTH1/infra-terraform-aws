@@ -12,3 +12,56 @@ variable "private_subnet_ids" {
   type        = list(string)
   description = "Private subnet IDs the DB subnet group is created from. Comes from module.network.private_subnet_ids. Must span at least 2 AZs."
 }
+
+variable "rds_security_group_id" {
+  type        = string
+  description = "ID of the security group attached to the Aurora cluster. Comes from module.network.rds_security_group_id."
+}
+
+variable "database_name" {
+  type        = string
+  description = "Name of the initial database created in the cluster."
+  default     = "appdb"
+}
+
+variable "master_username" {
+  type        = string
+  description = "Master username. The password itself is never set here — it's managed entirely by RDS via Secrets Manager (manage_master_user_password)."
+  default     = "dbadmin"
+}
+
+variable "min_capacity_acu" {
+  type        = number
+  description = "Minimum Aurora Capacity Units. 0 enables auto-pause after seconds_until_auto_pause of inactivity — the closest thing to 'scale to zero' Aurora Serverless v2 offers."
+  default     = 0
+}
+
+variable "max_capacity_acu" {
+  type        = number
+  description = "Maximum Aurora Capacity Units the instance can scale up to."
+  default     = 1
+}
+
+variable "seconds_until_auto_pause" {
+  type        = number
+  description = "Seconds of inactivity before the cluster auto-pauses. Only takes effect when min_capacity_acu is 0."
+  default     = 3600
+}
+
+variable "backup_retention_days" {
+  type        = number
+  description = "Number of days to retain automated backups."
+  default     = 7
+}
+
+variable "deletion_protection" {
+  type        = bool
+  description = "Whether to enable deletion protection on the cluster. Keep false in dev (iterating on apply/destroy); set true in prod."
+  default     = false
+}
+
+variable "skip_final_snapshot" {
+  type        = bool
+  description = "Whether to skip taking a final snapshot on destroy. Keep true in dev for fast, clean teardown; set false in prod."
+  default     = true
+}

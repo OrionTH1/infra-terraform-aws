@@ -66,7 +66,8 @@ module "ecs" {
 module "rds" {
   source = "../../modules/rds"
 
-  project            = var.project
-  environment        = var.environment
-  private_subnet_ids = module.network.private_subnet_ids
+  project               = var.project
+  environment           = var.environment
+  private_subnet_ids    = module.network.private_subnet_ids
+  rds_security_group_id = module.network.rds_security_group_id
 }
