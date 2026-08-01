@@ -62,3 +62,11 @@ module "ecs" {
   alb_arn_suffix          = module.alb.alb_arn_suffix
   target_group_arn_suffix = module.alb.target_group_arn_suffix
 }
+
+module "rds" {
+  source = "../../modules/rds"
+
+  project            = var.project
+  environment        = var.environment
+  private_subnet_ids = module.network.private_subnet_ids
+}
