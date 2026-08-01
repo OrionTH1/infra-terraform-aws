@@ -38,3 +38,10 @@ module "alb" {
   alb_security_group_id = module.network.alb_security_group_id
   app_port              = var.app_port
 }
+
+module "ecr" {
+  source = "../../modules/ecr"
+
+  project     = var.project
+  environment = var.environment
+}
