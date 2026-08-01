@@ -26,3 +26,8 @@ variable "app_port" {
   description = "Port the application container listens on."
   default     = 8080
 }
+
+variable "image_tag" {
+  type        = string
+  description = "Tag of the backend image in ECR to deploy (e.g. a commit SHA). No default: the ECR repository is immutable, so this must be a tag that was actually pushed."
+}
