@@ -23,6 +23,10 @@ resource "aws_ecs_service" "backend" {
     aws_iam_role_policy.execution_logs,
   ]
 
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
+
   tags = {
     Name = "${var.project}-${var.environment}-ecs-service"
   }

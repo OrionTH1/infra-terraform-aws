@@ -22,3 +22,13 @@ output "listener_arn" {
   description = "ARN of the HTTP listener. Not consumed directly, but passed to the ECS service as a depends_on target so it isn't created before the listener is actually forwarding traffic to the target group."
   value       = aws_lb_listener.http.arn
 }
+
+output "alb_arn_suffix" {
+  description = "ARN suffix of the ALB (e.g. app/name/id), used together with target_group_arn_suffix to build the resource_label for the ALBRequestCountPerTarget autoscaling metric."
+  value       = aws_lb.this.arn_suffix
+}
+
+output "target_group_arn_suffix" {
+  description = "ARN suffix of the target group (e.g. targetgroup/name/id), used together with alb_arn_suffix to build the resource_label for the ALBRequestCountPerTarget autoscaling metric."
+  value       = aws_lb_target_group.app.arn_suffix
+}

@@ -68,6 +68,34 @@ variable "alb_listener_arn" {
 
 variable "desired_count" {
   type        = number
-  description = "Number of tasks the service keeps running. >= 2 for real HA across AZs."
+  description = "Number of tasks the service keeps running. >= 2 for real HA across AZs. Only used as the initial value — autoscaling takes over desired_count after that (see lifecycle.ignore_changes on the service)."
   default     = 2
+}
+
+variable "min_capacity" {
+  type        = number
+  description = "Minimum number of tasks autoscaling is allowed to scale in to."
+  default     = 2
+}
+
+variable "max_capacity" {
+  type        = number
+  description = "Maximum number of tasks autoscaling is allowed to scale out to."
+  default     = 4
+}
+
+variable "requests_per_target_target_value" {
+  type        = number
+  description = "Target average ALB requests per minute per task. Autoscaling adds/removes tasks to keep the actual average close to this value."
+  default     = 1000
+}
+
+variable "alb_arn_suffix" {
+  type        = string
+  description = "ARN suffix of the ALB. Comes from module.alb.alb_arn_suffix."
+}
+
+variable "target_group_arn_suffix" {
+  type        = string
+  description = "ARN suffix of the target group. Comes from module.alb.target_group_arn_suffix."
 }

@@ -49,14 +49,16 @@ module "ecr" {
 module "ecs" {
   source = "../../modules/ecs"
 
-  project               = var.project
-  environment           = var.environment
-  ecr_repository_arn    = module.ecr.repository_arn
-  ecr_repository_url    = module.ecr.repository_url
-  image_tag             = var.image_tag
-  app_port              = var.app_port
-  private_subnet_ids    = module.network.private_subnet_ids
-  ecs_security_group_id = module.network.ecs_security_group_id
-  target_group_arn      = module.alb.target_group_arn
-  alb_listener_arn      = module.alb.listener_arn
+  project                 = var.project
+  environment             = var.environment
+  ecr_repository_arn      = module.ecr.repository_arn
+  ecr_repository_url      = module.ecr.repository_url
+  image_tag               = var.image_tag
+  app_port                = var.app_port
+  private_subnet_ids      = module.network.private_subnet_ids
+  ecs_security_group_id   = module.network.ecs_security_group_id
+  target_group_arn        = module.alb.target_group_arn
+  alb_listener_arn        = module.alb.listener_arn
+  alb_arn_suffix          = module.alb.alb_arn_suffix
+  target_group_arn_suffix = module.alb.target_group_arn_suffix
 }
