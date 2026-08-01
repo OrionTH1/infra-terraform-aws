@@ -45,3 +45,29 @@ variable "task_memory" {
   description = "Fargate task-level memory in MiB. Must be a valid Fargate CPU/memory combination."
   default     = "512"
 }
+
+variable "private_subnet_ids" {
+  type        = list(string)
+  description = "Private subnet IDs the ECS tasks run in. Comes from module.network.private_subnet_ids."
+}
+
+variable "ecs_security_group_id" {
+  type        = string
+  description = "ID of the security group attached to the ECS tasks. Comes from module.network.ecs_security_group_id."
+}
+
+variable "target_group_arn" {
+  type        = string
+  description = "ARN of the ALB target group the service registers tasks into. Comes from module.alb.target_group_arn."
+}
+
+variable "alb_listener_arn" {
+  type        = string
+  description = "ARN of the ALB listener. Not used directly by the service, only to force it to wait until the listener is actually forwarding traffic to the target group before creating the service. Comes from module.alb.listener_arn."
+}
+
+variable "desired_count" {
+  type        = number
+  description = "Number of tasks the service keeps running. >= 2 for real HA across AZs."
+  default     = 2
+}
