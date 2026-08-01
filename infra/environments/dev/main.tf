@@ -45,3 +45,11 @@ module "ecr" {
   project     = var.project
   environment = var.environment
 }
+
+module "ecs" {
+  source = "../../modules/ecs"
+
+  project            = var.project
+  environment        = var.environment
+  ecr_repository_arn = module.ecr.repository_arn
+}
