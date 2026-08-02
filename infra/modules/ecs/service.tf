@@ -17,6 +17,14 @@ resource "aws_ecs_service" "backend" {
     container_port   = var.app_port
   }
 
+  # Without this, a deployment with a broken image or a failing health check loops
+  # forever creating and killing tasks, silently. With it, ECS gives up and rolls
+  # back to the last COMPLETED deployment.
+  deployment_circuit_breaker {
+    enable   = var.enable_deployment_circuit_breaker
+    rollback = var.enable_deployment_circuit_breaker
+  }
+
   depends_on = [
     var.alb_listener_arn,
     aws_iam_role_policy.execution_ecr_pull,

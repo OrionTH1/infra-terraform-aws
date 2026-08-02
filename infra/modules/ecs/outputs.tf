@@ -3,6 +3,21 @@ output "cluster_arn" {
   value       = aws_ecs_cluster.this.arn
 }
 
+output "cluster_name" {
+  description = "Name of the ECS cluster, used as the ClusterName dimension in CloudWatch metrics."
+  value       = aws_ecs_cluster.this.name
+}
+
+output "service_name" {
+  description = "Name of the ECS service, used as the ServiceName dimension in CloudWatch metrics."
+  value       = aws_ecs_service.backend.name
+}
+
+output "log_group_name" {
+  description = "Name of the CloudWatch log group the tasks write to."
+  value       = aws_cloudwatch_log_group.backend.name
+}
+
 output "service_id" {
   description = "ARN of the ECS service (the service resource's id is its ARN)."
   value       = aws_ecs_service.backend.id

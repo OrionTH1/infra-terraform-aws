@@ -33,6 +33,18 @@ variable "image_tag" {
   default     = "bootstrap"
 }
 
+variable "alarm_email" {
+  type        = string
+  description = "Email that receives CloudWatch alarm notifications. Leave empty to skip the subscription. AWS sends a confirmation link that has to be clicked manually — see infra/README.md."
+  default     = ""
+}
+
+variable "container_insights" {
+  type        = string
+  description = "Container Insights mode: \"disabled\", \"enabled\" or \"enhanced\". See ARCHITECTURE.md section 6 for the cost trade-off."
+  default     = "enabled"
+}
+
 variable "github_repository" {
   type        = string
   description = "GitHub repository in \"owner/repo\" format (no github.com/ prefix), used to scope the GitHub Actions OIDC trust policies."

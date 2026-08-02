@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from 'express';
 import { pool } from '../db/pool';
+import { logger } from '../logger';
 
 export const healthRoute = Router()
 
@@ -8,7 +9,7 @@ healthRoute.get('/', async (req: Request, res: Response) => {
     await pool.query('SELECT 1');
     res.status(200).send('OK');
   } catch (error) {
-    console.error('Health check DB connection failed', error);
+    logger.error({ err: error }, 'Health check DB connection failed');
     res.status(503).send('DB unavailable');
   }
 });

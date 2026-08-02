@@ -13,6 +13,23 @@ variable "ecr_repository_arn" {
   description = "ARN of the ECR repository the execution role is allowed to pull images from. Comes from module.ecr.repository_arn."
 }
 
+variable "container_insights" {
+  type        = string
+  description = "CloudWatch Container Insights mode for the cluster: \"disabled\", \"enabled\" (standard, per task/service metrics) or \"enhanced\" (adds per-container metrics, ~5x the metric count and cost)."
+  default     = "enabled"
+
+  validation {
+    condition     = contains(["disabled", "enabled", "enhanced"], var.container_insights)
+    error_message = "container_insights must be one of: disabled, enabled, enhanced."
+  }
+}
+
+variable "enable_deployment_circuit_breaker" {
+  type        = bool
+  description = "Whether ECS should detect failed deployments (failing health checks, image pull errors) and roll back to the last COMPLETED deployment instead of looping forever."
+  default     = true
+}
+
 variable "log_retention_days" {
   type        = number
   description = "Number of days to retain the ECS task's CloudWatch logs."

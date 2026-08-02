@@ -70,6 +70,7 @@ module "ecs" {
   ecr_repository_url      = module.ecr.repository_url
   image_tag               = var.image_tag
   app_port                = var.app_port
+  container_insights      = var.container_insights
   private_subnet_ids      = module.network.private_subnet_ids
   ecs_security_group_id   = module.network.ecs_security_group_id
   target_group_arn        = module.alb.target_group_arn
@@ -80,6 +81,27 @@ module "ecs" {
   db_host                 = module.rds.cluster_endpoint
   db_port                 = module.rds.cluster_port
   db_name                 = module.rds.database_name
+}
+
+module "observability" {
+  source = "../../modules/observability"
+
+  project     = var.project
+  environment = var.environment
+  alarm_email = var.alarm_email
+
+  alb_arn_suffix          = module.alb.alb_arn_suffix
+  target_group_arn_suffix = module.alb.target_group_arn_suffix
+
+  ecs_cluster_name           = module.ecs.cluster_name
+  ecs_service_name           = module.ecs.service_name
+  ecs_service_arn            = module.ecs.service_id
+  ecs_min_running_tasks      = 2
+  container_insights_enabled = var.container_insights != "disabled"
+
+  log_group_name = module.ecs.log_group_name
+
+  db_cluster_identifier = module.rds.cluster_identifier
 }
 
 module "github_oidc" {

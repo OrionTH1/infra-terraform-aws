@@ -116,6 +116,55 @@ Notas de implementação:
   - CPU/memória da task acima de threshold (sinal de que o auto scaling não está dando conta ou está mal calibrado).
 - Opcional (diferencial): tracing distribuído com AWS X-Ray ou OpenTelemetry Collector como sidecar.
 
+### 6.1. Alarmes implementados
+
+Tudo no módulo `observability`, publicando num único SNS topic (`alarm_actions` **e** `ok_actions` — receber o aviso de recuperação importa tanto quanto o de falha).
+
+| Alarme | Métrica | Threshold | `treat_missing_data` |
+|---|---|---|---|
+| Targets não saudáveis | `UnHealthyHostCount` (Max) | `> 0` por 2min | `notBreaching` |
+| Capacidade perdida | `HealthyHostCount` (Min) | `< 2` por 2min | `notBreaching` |
+| Taxa de erro 5xx | metric math (ver abaixo) | `> 5%` por 10min | `notBreaching` |
+| Latência | `TargetResponseTime` **p99** | `> 5s` por 15min | `notBreaching` |
+| CPU | `AWS/ECS CPUUtilization` | `> 85%` por 5min | `notBreaching` |
+| Memória | `AWS/ECS MemoryUtilization` | `> 80%` por 5min | `notBreaching` |
+| Tasks rodando | `ECS/ContainerInsights RunningTaskCount` | `< 2` por 3min | **`breaching`** |
+| Conexões no banco | `AWS/RDS DatabaseConnections` | `> 50` por 10min | `notBreaching` |
+| Erros na aplicação | log metric filter (`$.level >= 50`) | `> 10` em 5min | `notBreaching` |
+
+Complementando, dois eventos do EventBridge → SNS (`SERVICE_DEPLOYMENT_FAILED` e `SERVICE_TASK_PLACEMENT_FAILURE`), porque **falha de deploy não tem métrica CloudWatch** — só existe como evento.
+
+### 6.2. Decisões e armadilhas
+
+**`treat_missing_data` é a decisão mais importante de cada alarme.** Métricas do ALB só são publicadas quando há tráfego, e `HTTPCode_*_5XX_Count` especificamente só é publicada **quando é diferente de zero**. Num ambiente de portfólio que fica ocioso, isso significa:
+- default (`missing`) → o alarme de 5xx vive em `INSUFFICIENT_DATA` e nunca volta limpo para `OK`;
+- `breaching` → alarme dispara de madrugada porque ninguém acessou o site;
+- **`notBreaching`** (o escolhido) → ausência de dado = sem erros = `OK`.
+
+A exceção é `RunningTaskCount`, onde `breaching` é o correto: ali a ausência de dado **é** o incidente — nenhuma task reportando significa nenhuma task viva.
+
+`UnHealthyHostCount` é o alarme mais confiável desta stack justamente por ser publicado mesmo sem tráfego, desde que haja targets registrados.
+
+**Taxa de erro, não contagem absoluta.** "10 erros" significa coisas opostas a 100 req/min e a 100k req/min. A expressão usada é:
+
+```
+IF(m1 >= 30, 100 * (FILL(m2,0) + FILL(m3,0)) / m1, 0)
+```
+
+- `FILL(m2,0)` — sem isso a expressão inteira fica *missing* (não zero) sempre que não há erros, porque a métrica de 5xx é esparsa;
+- `IF(m1 >= 30, ...)` — guarda de volume baixo: sem ela, 1 erro em 2 requisições vira "50% de taxa de erro";
+- `m2` (`HTTPCode_ELB_5XX_Count`, gerado pelo ALB: 502/503/504) e `m3` (`HTTPCode_Target_5XX_Count`, gerado pela aplicação) são somados porque, do lado do usuário, a distinção é invisível.
+
+**Por que alarmar CPU se já existe auto scaling?** Porque o auto scaling desta stack reage a `ALBRequestCountPerTarget` — ou seja, só adiciona capacidade quando o *volume de requisições* sobe. CPU alta **desacoplada** do volume (loop infinito, GC thrash, query patológica) é invisível para ele. E memória é ainda mais crítica: não existe auto scaling por memória nenhum aqui, então o alarme é o único aviso antes do OOM kill.
+
+**Um único alarme no Aurora, de propósito.** Com `min_capacity = 0`, o cluster pausa quando ocioso e **para de publicar a maioria das métricas** (não reporta zero — some). Qualquer alarme com `breaching` dispararia toda noite. E `ACUUtilization` é inútil aqui: `max_capacity = 1` é uma decisão de custo, então bater 100% é a configuração funcionando, não um incidente. Sobra `DatabaseConnections`, que detecta *connection leak* no pool do Express — uma falha real e causada pela aplicação.
+
+**Container Insights: `enabled`, não `enhanced`.** O modo `enhanced` acrescenta métricas por container — que, com um único container por task, são duplicatas das métricas de task, a ~5x a contagem de métricas cobradas. O modo `enabled` custa mais que zero (~$8-11/mês num ambiente 24/7), e a única métrica que realmente depende dele aqui é `RunningTaskCount`; por isso `var.container_insights` aceita `disabled` e o alarme correspondente some via `count` (o `HealthyHostCount`, gratuito, cobre o mesmo sinal de forma aproximada).
+
+**Deployment circuit breaker** (`enable` + `rollback`) está ligado no service: sem ele, um deploy com imagem quebrada fica em loop infinito criando e matando tasks, silenciosamente. O módulo expõe `stable_alarm_arns` para quem quiser ligar `deployment_alarms` — deliberadamente só os alarmes que não oscilam num ambiente ocioso, já que um alarme ruidoso ali transforma todo deploy em roleta.
+
+**Tracing distribuído: avaliado e deliberadamente não implementado.** X-Ray/OpenTelemetry responde "em qual dos N serviços está a latência". Esta topologia tem **um** serviço e **um** endpoint — o service map seria uma caixa e uma seta. O custo (sidecar consumindo CPU/memória da task, config do collector, instrumentação, permissões na task role) não se paga. É o próximo passo natural no dia em que existir um segundo serviço.
+
 ## 7. Terraform como código profissional
 
 - **Remote state**: backend S3 com versionamento habilitado + locking nativo do próprio backend (`use_lockfile = true`, Terraform 1.10+) — sem DynamoDB table, já que o locking via DynamoDB está deprecated pela HashiCorp. Isso sozinho é um dos sinais mais fortes de maturidade em um repo de portfólio.
@@ -185,6 +234,7 @@ ecs-terraform-infra/
       ecr/                 # repositório de imagem + lifecycle policy
       ecs/                 # cluster, task definition, service, autoscaling, IAM, logs
       rds/                 # Aurora Serverless v2, subnet group, instances
+      observability/       # SNS, alarmes, dashboard, log metric filter, EventBridge
       github_oidc/         # OIDC provider + roles de plan/apply/deploy do CI
       dns/                 # (pendente — Fase 5, aguardando domínio)
     environments/
@@ -212,7 +262,7 @@ Implementar em camadas incrementais, validando cada uma antes de avançar — ev
 4. ✅ **Conectar API ao banco**: mesmo que a API não use o banco de fato ainda, validar que a task consegue alcançar o Aurora pela rede/SG (ex.: endpoint de health check "estendido" que testa a conexão).
 5. ⏸️ **HTTPS + domínio** (em espera — aguardando aquisição de um domínio; ver nota abaixo): Route53 + ACM + listener HTTPS, redirect HTTP→HTTPS.
 6. ✅ **CI/CD**: workflows de build/push da API e de plan/apply do Terraform.
-7. **Observabilidade**: log retention, Container Insights, alarmes.
+7. ✅ **Observabilidade**: log retention, Container Insights, alarmes.
 8. **Hardening extra**: WAF, tfsec/checkov no CI, revisão de IAM policies, deletion protection, backup retention.
 
 Cada fase é um checkpoint natural para commit e, se quiser, para documentar no README o que foi adicionado e por quê — isso também reforça a narrativa de portfólio.

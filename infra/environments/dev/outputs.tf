@@ -18,6 +18,16 @@ output "db_master_user_secret_arn" {
   value       = module.rds.master_user_secret_arn
 }
 
+output "dashboard_url" {
+  description = "Console URL of the CloudWatch dashboard for this environment."
+  value       = module.observability.dashboard_url
+}
+
+output "alarm_topic_arn" {
+  description = "ARN of the SNS topic that receives alarms and deployment-failure events."
+  value       = module.observability.alarm_topic_arn
+}
+
 output "gha_plan_role_arn" {
   description = "ARN of the read-only IAM role for the terraform-plan GitHub Actions workflow (PRs)."
   value       = module.github_oidc.plan_role_arn

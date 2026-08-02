@@ -64,6 +64,17 @@ terraform {
 
 Depois disso, `cd environments/dev && terraform init` já inicializa contra o backend remoto.
 
+## Confirmação da assinatura de e-mail dos alarmes
+
+Se `var.alarm_email` estiver preenchida, o `apply` cria uma assinatura SNS que fica em **`PendingConfirmation`** até alguém clicar no link que a AWS envia por e-mail. O Terraform não consegue confirmar isso — é um passo único por destinatário, análogo a validar um domínio.
+
+Duas consequências práticas:
+
+- Enquanto não confirmar, **nenhum alarme chega**.
+- Uma assinatura não confirmada **não pode ser deletada pelo Terraform**: um `destroy` a remove do state mas ela permanece na conta (some sozinha em ~3 dias).
+
+Deixe `alarm_email` vazia se não quiser criar assinatura nenhuma — o tópico é criado de qualquer forma e os alarmes continuam funcionando (só não notificam ninguém).
+
 ## Adicionando um novo ambiente (ex. `staging`)
 
 Não recria o bucket — só usa uma `key` diferente dentro do mesmo bucket, para o state de cada ambiente ficar isolado:

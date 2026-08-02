@@ -1,3 +1,8 @@
+output "cluster_identifier" {
+  description = "Identifier of the Aurora cluster, used as the DBClusterIdentifier dimension in CloudWatch metrics."
+  value       = aws_rds_cluster.this.cluster_identifier
+}
+
 output "cluster_endpoint" {
   description = "Writer endpoint of the Aurora cluster. Use this for all writes (INSERT/UPDATE/DELETE) and for reads when read-after-write consistency matters."
   value       = aws_rds_cluster.this.endpoint
