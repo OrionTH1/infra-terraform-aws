@@ -99,3 +99,23 @@ variable "target_group_arn_suffix" {
   type        = string
   description = "ARN suffix of the target group. Comes from module.alb.target_group_arn_suffix."
 }
+
+variable "rds_master_secret_arn" {
+  type        = string
+  description = "ARN of the Secrets Manager secret holding the Aurora master credentials. Comes from module.rds.master_user_secret_arn."
+}
+
+variable "db_host" {
+  type        = string
+  description = "Aurora cluster writer endpoint. Comes from module.rds.cluster_endpoint."
+}
+
+variable "db_port" {
+  type        = number
+  description = "Aurora cluster port. Comes from module.rds.cluster_port."
+}
+
+variable "db_name" {
+  type        = string
+  description = "Database name. Comes from module.rds.database_name."
+}

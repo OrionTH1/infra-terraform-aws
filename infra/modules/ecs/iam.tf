@@ -48,3 +48,16 @@ resource "aws_iam_role_policy" "execution_ecr_pull" {
   role   = aws_iam_role.execution.id
   policy = data.aws_iam_policy_document.execution_ecr_pull.json
 }
+
+data "aws_iam_policy_document" "execution_db_secret" {
+  statement {
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [var.rds_master_secret_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "execution_db_secret" {
+  name   = "db-secret"
+  role   = aws_iam_role.execution.id
+  policy = data.aws_iam_policy_document.execution_db_secret.json
+}

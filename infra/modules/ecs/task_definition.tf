@@ -30,6 +30,29 @@ resource "aws_ecs_task_definition" "backend" {
         {
           name  = "SERVER_PORT"
           value = tostring(var.app_port)
+        },
+        {
+          name  = "DB_HOST"
+          value = var.db_host
+        },
+        {
+          name  = "DB_PORT"
+          value = tostring(var.db_port)
+        },
+        {
+          name  = "DB_NAME"
+          value = var.db_name
+        }
+      ]
+
+      secrets = [
+        {
+          name      = "DB_USERNAME"
+          valueFrom = "${var.rds_master_secret_arn}:username::"
+        },
+        {
+          name      = "DB_PASSWORD"
+          valueFrom = "${var.rds_master_secret_arn}:password::"
         }
       ]
 

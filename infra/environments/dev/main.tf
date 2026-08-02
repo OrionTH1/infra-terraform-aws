@@ -46,6 +46,15 @@ module "ecr" {
   environment = var.environment
 }
 
+module "rds" {
+  source = "../../modules/rds"
+
+  project               = var.project
+  environment           = var.environment
+  private_subnet_ids    = module.network.private_subnet_ids
+  rds_security_group_id = module.network.rds_security_group_id
+}
+
 module "ecs" {
   source = "../../modules/ecs"
 
@@ -61,13 +70,8 @@ module "ecs" {
   alb_listener_arn        = module.alb.listener_arn
   alb_arn_suffix          = module.alb.alb_arn_suffix
   target_group_arn_suffix = module.alb.target_group_arn_suffix
-}
-
-module "rds" {
-  source = "../../modules/rds"
-
-  project               = var.project
-  environment           = var.environment
-  private_subnet_ids    = module.network.private_subnet_ids
-  rds_security_group_id = module.network.rds_security_group_id
+  rds_master_secret_arn   = module.rds.master_user_secret_arn
+  db_host                 = module.rds.cluster_endpoint
+  db_port                 = module.rds.cluster_port
+  db_name                 = module.rds.database_name
 }

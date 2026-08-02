@@ -21,6 +21,7 @@ resource "aws_ecs_service" "backend" {
     var.alb_listener_arn,
     aws_iam_role_policy.execution_ecr_pull,
     aws_iam_role_policy.execution_logs,
+    aws_iam_role_policy.execution_db_secret,
   ]
 
   lifecycle {
