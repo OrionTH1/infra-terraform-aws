@@ -24,6 +24,11 @@ output "gha_plan_role_arn" {
 }
 
 output "gha_apply_role_arn" {
-  description = "ARN of the read-write IAM role for the terraform-apply / deploy GitHub Actions workflows (main branch, gated by the production Environment)."
+  description = "ARN of the read-write IAM role for the terraform-apply GitHub Actions workflow (main branch, gated by the production Environment)."
   value       = module.github_oidc.apply_role_arn
+}
+
+output "gha_deploy_role_arn" {
+  description = "ARN of the IAM role for the api-deploy GitHub Actions workflow (ECR push + ECS deploy only, runs on every push to main)."
+  value       = module.github_oidc.deploy_role_arn
 }

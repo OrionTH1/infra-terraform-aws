@@ -26,7 +26,7 @@ variable "ecr_repository_url" {
 
 variable "image_tag" {
   type        = string
-  description = "Tag of the image to deploy (e.g. a commit SHA). The ECR repository is immutable, so this must change on every deploy."
+  description = "Tag of the bootstrap image used to create the Task Definition for the first time. Real deploys after that are handled outside Terraform (see aws_ecs_service.backend's lifecycle.ignore_changes on task_definition)."
 }
 
 variable "app_port" {

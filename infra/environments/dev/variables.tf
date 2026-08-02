@@ -29,7 +29,8 @@ variable "app_port" {
 
 variable "image_tag" {
   type        = string
-  description = "Tag of the backend image in ECR to deploy (e.g. a commit SHA). No default: the ECR repository is immutable, so this must be a tag that was actually pushed."
+  description = "Tag of the bootstrap image used to create the Task Definition for the first time. After that, the ECS Service ignores changes to task_definition (see ecs/service.tf lifecycle block) — real deploys are handled by the api-deploy GitHub Actions workflow via aws ecs register-task-definition, not by changing this variable."
+  default     = "bootstrap"
 }
 
 variable "github_repository" {

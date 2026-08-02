@@ -1,4 +1,6 @@
 terraform {
+  required_version = "~> 1.15"
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -83,9 +85,13 @@ module "ecs" {
 module "github_oidc" {
   source = "../../modules/github_oidc"
 
-  project           = var.project
-  environment       = var.environment
-  github_repository = var.github_repository
-  state_bucket_arn  = "arn:aws:s3:::ecs-portfolio-tfstate-b41d7649"
-  state_key         = "dev/terraform.tfstate"
+  project                = var.project
+  environment            = var.environment
+  github_repository      = var.github_repository
+  state_bucket_arn       = "arn:aws:s3:::ecs-portfolio-tfstate-b41d7649"
+  state_key              = "dev/terraform.tfstate"
+  ecr_repository_arn     = module.ecr.repository_arn
+  ecs_service_arn        = module.ecs.service_id
+  ecs_execution_role_arn = module.ecs.execution_role_arn
+  ecs_task_role_arn      = module.ecs.task_role_arn
 }

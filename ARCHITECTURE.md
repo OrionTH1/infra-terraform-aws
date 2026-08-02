@@ -144,23 +144,55 @@ Notas de implementação:
   - No merge para `main`: `terraform apply`, idealmente com um gate de aprovação manual (GitHub Environments com required reviewers).
 - Credenciais AWS no CI via OIDC (GitHub Actions ↔ IAM Role), evitando access keys estáticas — mais um diferencial de maturidade/segurança.
 
+### 8.1. Decisões de implementação
+
+Duas escolhas tomadas ao implementar esta seção, que valem estar registradas:
+
+**Três IAM Roles, não uma.** Cada workflow assume uma role com escopo próprio, e a trust policy de cada uma usa `StringEquals` (nunca wildcard) num claim `sub` diferente:
+
+| Role | Claim `sub` exigido | Permissões |
+|---|---|---|
+| `gha-plan` | `repo:OWNER/REPO:pull_request` | Só leitura (`Describe*`/`List*`/`Get*`) + lock do state |
+| `gha-apply` | `repo:OWNER/REPO:environment:production` | Leitura/escrita nos serviços do projeto; `iam:*Role*` escopado a `ecs-portfolio-*` |
+| `gha-deploy` | `repo:OWNER/REPO:ref:refs/heads/main` | Só push no ECR + `UpdateService` neste service + `PassRole` das roles do ECS |
+
+A `gha-apply` depender do claim `environment:production` (e não de `ref:refs/heads/main`) faz o gate de aprovação do GitHub e a permissão da AWS serem a mesma trava: sem passar pelo required reviewer, a credencial nem é emitida.
+
+**Deploy de imagem não passa por Terraform.** O `aws_ecs_task_definition` criado pelo Terraform é só o *molde inicial*; cada deploy real registra uma revisão nova via `aws ecs register-task-definition` (actions oficiais `amazon-ecs-render-task-definition` + `amazon-ecs-deploy-task-definition`). Para o Terraform não reverter isso no próximo apply de infra, `aws_ecs_service` tem `lifecycle.ignore_changes = [desired_count, task_definition]`.
+
+Motivo: deploy de aplicação acontece várias vezes ao dia, mudança de infra é rara. Se ambos rodassem `terraform apply`, disputariam o lock do state a cada push, e um deploy de uma linha de código recalcularia VPC/ALB/RDS inteiros só para trocar a tag da imagem.
+
+### 8.2. Configuração manual necessária no repositório
+
+Não é possível provisionar via Terraform (é config do GitHub, não da AWS):
+
+1. **Environment `production`** (`Settings → Environments`), com **Required reviewers** — o nome precisa bater com `var.github_environment` do módulo `github_oidc`.
+2. **Repository Variables** (`Settings → Secrets and variables → Actions → Variables`), preenchidas com os outputs do `terraform apply`: `AWS_PLAN_ROLE_ARN`, `AWS_APPLY_ROLE_ARN`, `AWS_DEPLOY_ROLE_ARN`.
+3. **Bootstrap**: o primeiro `terraform apply` roda localmente — as roles que o CI usa são criadas por ele, então o CI ainda não tem como se autenticar antes disso existir.
+
 ## 9. Estrutura de pastas sugerida (monorepo)
+
+Estrutura real do repositório (atualizada conforme a implementação avançou):
 
 ```
 ecs-terraform-infra/
-  api/                     # código Express (Dockerfile, src/, package.json)
-  modules/
-    network/
-    alb/
-    ecs/
-    rds/
-    dns/
-  environments/
-    dev/
-      main.tf              # compõe os módulos
-      variables.tf
-      terraform.tfvars     # gitignored
-      backend.tf           # config do remote state
+  backend/                 # código Express (Dockerfile, src/, package.json)
+  infra/
+    README.md              # setup manual do bucket de remote state
+    modules/
+      network/             # VPC, subnets, route tables, SGs, VPC endpoints
+      alb/                 # ALB, listener, target group
+      ecr/                 # repositório de imagem + lifecycle policy
+      ecs/                 # cluster, task definition, service, autoscaling, IAM, logs
+      rds/                 # Aurora Serverless v2, subnet group, instances
+      github_oidc/         # OIDC provider + roles de plan/apply/deploy do CI
+      dns/                 # (pendente — Fase 5, aguardando domínio)
+    environments/
+      dev/
+        main.tf            # compõe os módulos
+        variables.tf
+        outputs.tf
+        backend.tf         # config do remote state
   .github/
     workflows/
       api-deploy.yml
@@ -179,7 +211,7 @@ Implementar em camadas incrementais, validando cada uma antes de avançar — ev
 3. ✅ **Banco**: Aurora Serverless v2 + subnet group + Secrets Manager, validando conectividade a partir da própria task ECS (já em pé desde a etapa anterior) ou de uma instância temporária/bastion.
 4. ✅ **Conectar API ao banco**: mesmo que a API não use o banco de fato ainda, validar que a task consegue alcançar o Aurora pela rede/SG (ex.: endpoint de health check "estendido" que testa a conexão).
 5. ⏸️ **HTTPS + domínio** (em espera — aguardando aquisição de um domínio; ver nota abaixo): Route53 + ACM + listener HTTPS, redirect HTTP→HTTPS.
-6. **CI/CD**: workflows de build/push da API e de plan/apply do Terraform.
+6. ✅ **CI/CD**: workflows de build/push da API e de plan/apply do Terraform.
 7. **Observabilidade**: log retention, Container Insights, alarmes.
 8. **Hardening extra**: WAF, tfsec/checkov no CI, revisão de IAM policies, deletion protection, backup retention.
 

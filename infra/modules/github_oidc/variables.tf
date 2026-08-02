@@ -28,3 +28,23 @@ variable "state_key" {
   type        = string
   description = "Key of the state object within the bucket, e.g. \"dev/terraform.tfstate\"."
 }
+
+variable "ecr_repository_arn" {
+  type        = string
+  description = "ARN of the ECR repository the deploy role is allowed to push images to. Comes from module.ecr.repository_arn."
+}
+
+variable "ecs_service_arn" {
+  type        = string
+  description = "ARN of the ECS service the deploy role is allowed to update. Comes from module.ecs.service_id."
+}
+
+variable "ecs_execution_role_arn" {
+  type        = string
+  description = "ARN of the ECS execution role, needed for iam:PassRole when registering a new task definition revision. Comes from module.ecs.execution_role_arn."
+}
+
+variable "ecs_task_role_arn" {
+  type        = string
+  description = "ARN of the ECS task role, needed for iam:PassRole when registering a new task definition revision. Comes from module.ecs.task_role_arn."
+}
