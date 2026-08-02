@@ -65,3 +65,9 @@ variable "skip_final_snapshot" {
   description = "Whether to skip taking a final snapshot on destroy. Keep true in dev for fast, clean teardown; set false in prod."
   default     = true
 }
+
+variable "instance_count" {
+  type        = number
+  description = "Number of cluster instances. The first one created becomes the writer automatically; any additional ones are readers that Aurora can promote on failover. 1 = no automatic failover; 2+ = real HA."
+  default     = 2
+}
