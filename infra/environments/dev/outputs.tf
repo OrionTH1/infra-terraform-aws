@@ -17,3 +17,13 @@ output "db_master_user_secret_arn" {
   description = "ARN of the Secrets Manager secret with the Aurora master credentials."
   value       = module.rds.master_user_secret_arn
 }
+
+output "gha_plan_role_arn" {
+  description = "ARN of the read-only IAM role for the terraform-plan GitHub Actions workflow (PRs)."
+  value       = module.github_oidc.plan_role_arn
+}
+
+output "gha_apply_role_arn" {
+  description = "ARN of the read-write IAM role for the terraform-apply / deploy GitHub Actions workflows (main branch, gated by the production Environment)."
+  value       = module.github_oidc.apply_role_arn
+}

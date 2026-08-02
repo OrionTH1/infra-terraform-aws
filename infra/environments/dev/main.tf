@@ -4,6 +4,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 6.0"
     }
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
+    }
   }
 }
 
@@ -74,4 +78,14 @@ module "ecs" {
   db_host                 = module.rds.cluster_endpoint
   db_port                 = module.rds.cluster_port
   db_name                 = module.rds.database_name
+}
+
+module "github_oidc" {
+  source = "../../modules/github_oidc"
+
+  project           = var.project
+  environment       = var.environment
+  github_repository = var.github_repository
+  state_bucket_arn  = "arn:aws:s3:::ecs-portfolio-tfstate-b41d7649"
+  state_key         = "dev/terraform.tfstate"
 }

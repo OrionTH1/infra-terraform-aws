@@ -18,7 +18,7 @@ variable "environment" {
 variable "repository" {
   type        = string
   description = "Repository URL, used in the Repository tag."
-  default     = "github.com/matheus/ecs-terraform-infra"
+  default     = "github.com/OrionTH1/ecs-terraform-infra"
 }
 
 variable "app_port" {
@@ -30,4 +30,10 @@ variable "app_port" {
 variable "image_tag" {
   type        = string
   description = "Tag of the backend image in ECR to deploy (e.g. a commit SHA). No default: the ECR repository is immutable, so this must be a tag that was actually pushed."
+}
+
+variable "github_repository" {
+  type        = string
+  description = "GitHub repository in \"owner/repo\" format (no github.com/ prefix), used to scope the GitHub Actions OIDC trust policies."
+  default     = "OrionTH1/ecs-terraform-infra"
 }

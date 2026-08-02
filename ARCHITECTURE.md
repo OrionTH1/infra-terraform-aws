@@ -174,13 +174,15 @@ ecs-terraform-infra/
 
 Implementar em camadas incrementais, validando cada uma antes de avançar — evita depurar tudo de uma vez:
 
-1. **Rede**: VPC, subnets, route tables, IGW, VPC Endpoints (ECR api/dkr, S3 gateway, Logs, Secrets Manager), security groups vazios (sem regras específicas ainda).
-2. **Compute sem HTTPS**: ECS Fargate + ALB (só HTTP), API mínima respondendo em `/api/v1/health` — validar o caminho internet → ALB → ECS.
-3. **Banco**: Aurora Serverless v2 + subnet group + Secrets Manager, validando conectividade a partir da própria task ECS (já em pé desde a etapa anterior) ou de uma instância temporária/bastion.
-4. **Conectar API ao banco**: mesmo que a API não use o banco de fato ainda, validar que a task consegue alcançar o Aurora pela rede/SG (ex.: endpoint de health check "estendido" que testa a conexão).
-5. **HTTPS + domínio**: Route53 + ACM + listener HTTPS, redirect HTTP→HTTPS.
+1. ✅ **Rede**: VPC, subnets, route tables, IGW, VPC Endpoints (ECR api/dkr, S3 gateway, Logs, Secrets Manager), security groups vazios (sem regras específicas ainda).
+2. ✅ **Compute sem HTTPS**: ECS Fargate + ALB (só HTTP), API mínima respondendo em `/api/v1/health` — validar o caminho internet → ALB → ECS.
+3. ✅ **Banco**: Aurora Serverless v2 + subnet group + Secrets Manager, validando conectividade a partir da própria task ECS (já em pé desde a etapa anterior) ou de uma instância temporária/bastion.
+4. ✅ **Conectar API ao banco**: mesmo que a API não use o banco de fato ainda, validar que a task consegue alcançar o Aurora pela rede/SG (ex.: endpoint de health check "estendido" que testa a conexão).
+5. ⏸️ **HTTPS + domínio** (em espera — aguardando aquisição de um domínio; ver nota abaixo): Route53 + ACM + listener HTTPS, redirect HTTP→HTTPS.
 6. **CI/CD**: workflows de build/push da API e de plan/apply do Terraform.
 7. **Observabilidade**: log retention, Container Insights, alarmes.
 8. **Hardening extra**: WAF, tfsec/checkov no CI, revisão de IAM policies, deletion protection, backup retention.
 
 Cada fase é um checkpoint natural para commit e, se quiser, para documentar no README o que foi adicionado e por quê — isso também reforça a narrativa de portfólio.
+
+**Nota sobre a Fase 5**: pausada de propósito até haver um domínio próprio registrado — não faz sentido gerar o hosted zone/certificado sem um domínio real pra validar. Isso não bloqueia o restante do roadmap: as Fases 6–8 não dependem de HTTPS/domínio (CI/CD builda e aplica normalmente com o ALB em HTTP puro; observabilidade é toda sobre ECS/CloudWatch; o WAF se anexa ao ALB independente do listener ser HTTP ou HTTPS). A ordem pode seguir 6 → 7 → 8 → 5 sem problema, retomando a Fase 5 assim que o domínio existir.
