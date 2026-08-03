@@ -99,6 +99,55 @@ Notas de implementação:
 - Opcional (bom diferencial): AWS WAF associado ao ALB com regras gerenciadas básicas (ex.: `AWSManagedRulesCommonRuleSet`).
 - Tagging obrigatório em todo recurso: `Project`, `Environment`, `ManagedBy = terraform` (facilita cost explorer e mostra disciplina operacional).
 
+### 4.1. WAF: começar contando, não bloqueando
+
+O módulo `waf` anexa uma Web ACL ao ALB com quatro managed rule groups da AWS mais um *rate limit* por IP. A decisão que importa aqui não é *quais* regras, é **como ligá-las**:
+
+| Regra | Modo inicial |
+|---|---|
+| Rate limit por IP (2000 req/5min) | bloqueia |
+| `AmazonIpReputationList` | bloqueia |
+| `KnownBadInputsRuleSet` | bloqueia |
+| `CommonRuleSet` | **conta** (`count {}`) |
+| `SQLiRuleSet` | **conta** (`count {}`) |
+
+Um WAF mal calibrado derruba tráfego legítimo silenciosamente — e o `CommonRuleSet` é o mais propenso a falso positivo (regras como `SizeRestrictions_BODY` quebram uploads legítimos). O caminho correto é subir em `count {}`, revisar os *sampled requests* no CloudWatch, e só então virar para bloqueio. O rate limit vem primeiro na ordem de prioridade porque é a regra mais barata de avaliar e protege contra o que de fato acontece com um endpoint público, independente de assinatura.
+
+Os logs do WAF redigem os headers `authorization` e `cookie` — sem isso, credenciais de requisições bloqueadas iriam para o CloudWatch em texto claro.
+
+### 4.2. Permissions boundary na role de apply
+
+A role de apply do CI concede acesso amplo *por serviço* (`ec2:*`, `rds:*`, …) em vez de enumerar cada ação. Isso é uma escolha consciente: mapear cada chamada de API que o Terraform faz através de sete módulos é manutenção que desatualiza a cada upgrade de provider, e o resultado seria uma policy incompleta que quebra no `apply` seguinte.
+
+O alcance é limitado por dois mecanismos em vez disso:
+
+1. **Condition `aws:RequestedRegion`** em todos os statements amplos — nada fora da região do projeto é alcançável.
+2. **Permissions boundary** (`permissions_boundary.tf`) — permissões efetivas são a *interseção* entre a policy e o boundary, então mesmo que a policy fosse ampliada por engano, o boundary continua negando: criação de usuários/access keys (caminhos de escalação de privilégio que sobreviveriam à sessão OIDC de 1h), ações de `organizations`/`account`/billing, destruição do bucket de state, e qualquer coisa fora da região.
+
+O passo seguinte, não implementado, seria gerar a policy a partir do CloudTrail com o IAM Access Analyzer — inviável aqui porque exige ~90 dias de histórico numa infra que é destruída entre sessões.
+
+### 4.3. Scanners no CI
+
+- **Checkov** (`terraform-plan.yml`) analisa o IaC. Roda em job separado, **sem credenciais AWS** — só lê arquivos `.tf`, então não há motivo para ter acesso a nada.
+- **Trivy** (`api-deploy.yml`) escaneia a imagem **antes** do push para o ECR. Isso complementa o `scan_on_push` do repositório: uma imagem vulnerável não chega ao registry, em vez de ser descoberta lá depois.
+- Ambos publicam SARIF na aba **Security → Code scanning** do repositório (gratuito em repos públicos), que é evidência bem mais persuasiva que um check verde.
+- Ambos falham o build em achados relevantes (`soft_fail: false`, Trivy em `HIGH,CRITICAL`). Um scanner que só reporta vira decoração: o build fica verde para sempre e ninguém abre o relatório.
+
+### 4.4. Exceções de segurança aceitas
+
+Estado atual: **305 checks passando, 0 falhando, 29 suprimidos**. Toda supressão é inline, ao lado do recurso, com a justificativa no próprio comentário `checkov:skip` — nunca escondida num arquivo global. As categorias:
+
+| Categoria | Justificativa |
+|---|---|
+| `CKV_AWS_2`, `CKV_AWS_103`, `CKV2_AWS_20`, `CKV_AWS_378` (HTTP sem TLS) | Listener HTTPS + ACM é a Fase 5, pausada até haver domínio registrado. |
+| `CKV_AWS_260` (SG aberto para `0.0.0.0/0`) | É o SG de um ALB *internet-facing* — aceitar 80/443 do mundo é a função dele. Tudo atrás só aceita tráfego do tier anterior. |
+| `CKV_AWS_158`, `CKV_AWS_327`, `CKV_AWS_354`, `CKV_AWS_136` (KMS CMK) | Chaves gerenciadas pela AWS. Uma CMK custa $1/mês + administração de chave para proteger, neste caso, logs de requisição e uma tabela de health check numa conta de dev. Seria *security theater*. |
+| `CKV_AWS_139`, `CKV_AWS_150` (deletion protection) | Parametrizado; `false` em dev porque o ambiente é destruído entre sessões. Os `tfvars` de prod invertem. |
+| `CKV_AWS_118` (Enhanced Monitoring) | Cobrado por instância e sobreposto ao Performance Insights (habilitado, grátis em 7 dias) + alarmes CloudWatch. |
+| `CKV2_AWS_8` (AWS Backup) | Redundante com `backup_retention_period`, que já dá point-in-time recovery. |
+| `CKV2_AWS_5` (SG não anexado) | Falso positivo: os SGs são anexados em outros módulos, via variável — o graph check não atravessa fronteira de módulo. |
+| `CKV_AWS_1`, `CKV_AWS_49`, `CKV_AWS_109`, `CKV_AWS_111`, `CKV_AWS_356`, `CKV2_AWS_40` (IAM com `*`) | O `Allow *` está no *permissions boundary*, que nunca concede permissão — é o teto que os `Deny` recortam. Sem ele o boundary seria conjunto vazio. Nas policies de leitura, `Describe*`/`List*` não suportam permissão por recurso na maioria dos serviços. |
+
 ## 5. HTTPS / DNS
 
 - Route53 hosted zone para o domínio próprio (pode já existir ou ser criada pelo Terraform, dependendo de onde o domínio foi registrado).
@@ -182,7 +231,7 @@ IF(m1 >= 30, 100 * (FILL(m2,0) + FILL(m3,0)) / m1, 0)
 - Cada módulo com `variables.tf`, `outputs.tf` e `main.tf` (ou split por recurso, se ficar grande).
 - `versions.tf` fixando a versão do Terraform e dos providers (`required_providers`).
 - Outputs bem definidos nos módulos (ex.: `alb_dns_name`, `ecs_cluster_id`, `rds_endpoint`) para composição limpa no ambiente.
-- Lint de segurança: `tfsec` e/ou `checkov` rodando localmente e/ou no CI, com achados documentados ou suprimidos conscientemente (nunca ignorados silenciosamente).
+- Lint de segurança: `checkov` (IaC) e `trivy` (imagem) rodando no CI, com achados documentados ou suprimidos conscientemente (nunca ignorados silenciosamente). O `tfsec`, citado na versão original deste documento, foi descontinuado e absorvido pelo Trivy — não use.
 - `terraform fmt` e `terraform validate` como parte do fluxo de trabalho padrão antes de qualquer `plan`.
 
 ## 8. CI/CD (GitHub Actions)
@@ -235,6 +284,7 @@ ecs-terraform-infra/
       ecs/                 # cluster, task definition, service, autoscaling, IAM, logs
       rds/                 # Aurora Serverless v2, subnet group, instances
       observability/       # SNS, alarmes, dashboard, log metric filter, EventBridge
+      waf/                 # Web ACL, managed rule groups, rate limit, logging
       github_oidc/         # OIDC provider + roles de plan/apply/deploy do CI
       dns/                 # (pendente — Fase 5, aguardando domínio)
     environments/
@@ -244,10 +294,12 @@ ecs-terraform-infra/
         outputs.tf
         backend.tf         # config do remote state
   .github/
+    dependabot.yml         # github-actions + terraform + npm, semanal
     workflows/
-      api-deploy.yml
-      terraform-plan.yml
-      terraform-apply.yml
+      api-deploy.yml       # build → Trivy → push ECR → deploy ECS
+      terraform-plan.yml   # Checkov + fmt/validate/plan comentado no PR
+      terraform-apply.yml  # apply com gate de aprovação manual
+  .checkov.yaml            # config do scanner (skips globais justificados)
   ARCHITECTURE.md
   README.md
 ```
@@ -263,7 +315,7 @@ Implementar em camadas incrementais, validando cada uma antes de avançar — ev
 5. ⏸️ **HTTPS + domínio** (em espera — aguardando aquisição de um domínio; ver nota abaixo): Route53 + ACM + listener HTTPS, redirect HTTP→HTTPS.
 6. ✅ **CI/CD**: workflows de build/push da API e de plan/apply do Terraform.
 7. ✅ **Observabilidade**: log retention, Container Insights, alarmes.
-8. **Hardening extra**: WAF, tfsec/checkov no CI, revisão de IAM policies, deletion protection, backup retention.
+8. ✅ **Hardening extra**: WAF, Checkov/Trivy no CI, revisão de IAM policies, deletion protection, backup retention.
 
 Cada fase é um checkpoint natural para commit e, se quiser, para documentar no README o que foi adicionado e por quê — isso também reforça a narrativa de portfólio.
 

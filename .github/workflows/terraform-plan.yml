@@ -13,17 +13,51 @@ env:
   WORKING_DIR: infra/environments/dev
 
 permissions:
-  id-token: write
   contents: read
-  pull-requests: write
 
 concurrency:
   group: terraform-plan-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
+  # Static analysis runs without AWS credentials at all — it only reads the .tf files.
+  # Keeping it in a separate job means a security finding is reported even if the plan
+  # itself fails, and it never gets access to the plan role.
+  security-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Checkov
+        id: checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: infra/
+          framework: terraform
+          output_format: cli,sarif
+          output_file_path: console,checkov.sarif
+          soft_fail: false
+
+      # if: always() — a failing scan must still publish its findings, otherwise the
+      # Security tab stays empty exactly when it matters.
+      - name: Upload results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: checkov.sarif
+          category: checkov
+
   plan:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
     defaults:
       run:
         working-directory: ${{ env.WORKING_DIR }}

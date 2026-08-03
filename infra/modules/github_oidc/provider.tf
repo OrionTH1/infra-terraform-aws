@@ -1,3 +1,5 @@
+data "aws_region" "current" {}
+
 data "tls_certificate" "github" {
   url = "https://token.actions.githubusercontent.com"
 }

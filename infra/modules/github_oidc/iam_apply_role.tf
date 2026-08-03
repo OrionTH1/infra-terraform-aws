@@ -22,8 +22,9 @@ data "aws_iam_policy_document" "apply_assume_role" {
 }
 
 resource "aws_iam_role" "apply" {
-  name               = "${var.project}-${var.environment}-gha-apply"
-  assume_role_policy = data.aws_iam_policy_document.apply_assume_role.json
+  name                 = "${var.project}-${var.environment}-gha-apply"
+  assume_role_policy   = data.aws_iam_policy_document.apply_assume_role.json
+  permissions_boundary = aws_iam_policy.apply_boundary.arn
 
   tags = {
     Name = "${var.project}-${var.environment}-gha-apply"
@@ -31,6 +32,10 @@ resource "aws_iam_role" "apply" {
 }
 
 data "aws_iam_policy_document" "apply_permissions" {
+  # Broad per-service access rather than a hand-enumerated action list: mapping every
+  # API call Terraform makes across six modules is maintenance that goes stale on each
+  # provider upgrade. The reach is capped two ways instead — the region condition below,
+  # and the permissions boundary attached to this role (permissions_boundary.tf).
   statement {
     sid = "ManageProjectServices"
     actions = [
@@ -43,8 +48,17 @@ data "aws_iam_policy_document" "apply_permissions" {
       "logs:*",
       "secretsmanager:*",
       "cloudwatch:*",
+      "events:*",
+      "sns:*",
+      "wafv2:*",
     ]
     resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestedRegion"
+      values   = [data.aws_region.current.region]
+    }
   }
 
   statement {
@@ -65,6 +79,32 @@ data "aws_iam_policy_document" "apply_permissions" {
       "iam:PassRole",
     ]
     resources = ["arn:aws:iam::*:role/${var.project}-*"]
+  }
+
+  # Managing the OIDC provider and the customer-managed policies (including this role's
+  # own permissions boundary) that this module creates.
+  statement {
+    sid = "ManageProjectIamPoliciesAndOidc"
+    actions = [
+      "iam:CreatePolicy",
+      "iam:DeletePolicy",
+      "iam:GetPolicy",
+      "iam:GetPolicyVersion",
+      "iam:ListPolicyVersions",
+      "iam:CreatePolicyVersion",
+      "iam:DeletePolicyVersion",
+      "iam:TagPolicy",
+      "iam:UntagPolicy",
+      "iam:CreateOpenIDConnectProvider",
+      "iam:DeleteOpenIDConnectProvider",
+      "iam:GetOpenIDConnectProvider",
+      "iam:TagOpenIDConnectProvider",
+      "iam:UpdateOpenIDConnectProviderThumbprint",
+    ]
+    resources = [
+      "arn:aws:iam::*:policy/${var.project}-*",
+      "arn:aws:iam::*:oidc-provider/token.actions.githubusercontent.com",
+    ]
   }
 
   statement {

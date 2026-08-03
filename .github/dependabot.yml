@@ -1,0 +1,29 @@
+version: 2
+updates:
+  # The most important of the three: this repo pins actions by SHA, so without
+  # Dependabot they silently rot and a compromised action would go unnoticed.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: terraform
+    directory: /infra/environments/dev
+    schedule:
+      interval: weekly
+    groups:
+      providers:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /backend
+    schedule:
+      interval: weekly
+    groups:
+      production:
+        dependency-type: production
+      development:
+        dependency-type: development

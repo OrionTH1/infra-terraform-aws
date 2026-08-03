@@ -66,6 +66,24 @@ variable "skip_final_snapshot" {
   default     = true
 }
 
+variable "log_statement" {
+  type        = string
+  description = "Which statements Postgres logs: \"none\", \"ddl\" (schema changes), \"mod\" (writes) or \"all\". \"all\" would log every health-check query."
+  default     = "ddl"
+}
+
+variable "log_min_duration_statement_ms" {
+  type        = string
+  description = "Log any statement slower than this many milliseconds. \"-1\" disables it; \"0\" logs everything (do not use outside debugging)."
+  default     = "1000"
+}
+
+variable "enabled_log_exports" {
+  type        = list(string)
+  description = "Database log types exported to CloudWatch Logs. Charged per GB ingested, so keep the list minimal."
+  default     = ["postgresql"]
+}
+
 variable "instance_count" {
   type        = number
   description = "Number of cluster instances. The first one created becomes the writer automatically; any additional ones are readers that Aurora can promote on failover. 1 = no automatic failover; 2+ = real HA."

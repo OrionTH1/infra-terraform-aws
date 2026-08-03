@@ -83,6 +83,14 @@ module "ecs" {
   db_name                 = module.rds.database_name
 }
 
+module "waf" {
+  source = "../../modules/waf"
+
+  project     = var.project
+  environment = var.environment
+  alb_arn     = module.alb.alb_arn
+}
+
 module "observability" {
   source = "../../modules/observability"
 

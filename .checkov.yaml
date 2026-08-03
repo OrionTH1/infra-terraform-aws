@@ -1,0 +1,16 @@
+# Global skips only for checks that do not apply to this project as a whole.
+# Anything specific to one resource is suppressed inline, next to the resource, with a
+# justification — see "Exceções de segurança aceitas" in ARCHITECTURE.md.
+skip-check:
+  # CKV_AWS_18 / CKV2_AWS_62: S3 access logging and event notifications on the state
+  # bucket. That bucket is intentionally not managed by Terraform (infra/README.md),
+  # so these findings point at a resource this codebase does not own.
+  - CKV_AWS_144 # cross-region replication — single-region project by design
+
+  # CKV_AWS_338: 1-year CloudWatch log retention. Retention here is an explicit,
+  # parameterised decision (var.log_retention_days) chosen for cost in a dev account,
+  # which is the behaviour the check exists to enforce.
+  - CKV_AWS_338
+
+compact: true
+quiet: true

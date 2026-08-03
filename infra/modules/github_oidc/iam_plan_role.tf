@@ -31,6 +31,7 @@ resource "aws_iam_role" "plan" {
 }
 
 data "aws_iam_policy_document" "plan_permissions" {
+  # checkov:skip=CKV_AWS_356:Describe*/List*/Get* actions do not support resource-level permissions in most AWS services — "*" is the only valid value. Every action here is read-only.
   statement {
     sid = "ReadOnlyDescribeProjectServices"
     actions = [

@@ -23,6 +23,7 @@ resource "aws_security_group" "vpc_endpoints_sg" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "allow_ecs_to_endpoints" {
+  description = "Interface endpoints accept HTTPS from the ECS tasks only"
   security_group_id            = aws_security_group.vpc_endpoints_sg.id
   referenced_security_group_id = aws_security_group.ecs_sg.id
   from_port                    = 443

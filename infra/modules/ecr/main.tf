@@ -1,4 +1,5 @@
 resource "aws_ecr_repository" "backend" {
+  # checkov:skip=CKV_AWS_136:Uses AES-256 with the AWS-managed key. A CMK adds cost and key administration to protect a container image that is built from a public repository.
   name                 = "${var.project}-${var.environment}-backend"
   image_tag_mutability = "IMMUTABLE"
   force_delete         = var.force_delete

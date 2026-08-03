@@ -1,4 +1,5 @@
 resource "aws_cloudwatch_log_group" "backend" {
+  # checkov:skip=CKV_AWS_158:Default CloudWatch Logs encryption. Application logs here are structured request records with no credentials; a CMK would add cost and key administration for no threat this project faces.
   name              = "/ecs/${var.project}-${var.environment}"
   retention_in_days = var.log_retention_days
 
