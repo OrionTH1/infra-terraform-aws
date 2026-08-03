@@ -7,9 +7,6 @@ resource "aws_sns_topic" "alarms" {
   }
 }
 
-# Email subscriptions land in "PendingConfirmation" until the recipient clicks the link
-# AWS sends. Terraform cannot confirm it, and an unconfirmed subscription cannot be
-# deleted by Terraform either (it is removed from state but lingers in AWS).
 resource "aws_sns_topic_subscription" "alarms_email" {
   count = var.alarm_email == "" ? 0 : 1
 

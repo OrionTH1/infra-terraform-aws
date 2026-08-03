@@ -14,8 +14,6 @@ variable "alarm_email" {
   default     = ""
 }
 
-# --- ALB ---
-
 variable "alb_arn_suffix" {
   type        = string
   description = "ARN suffix of the ALB (LoadBalancer dimension). Comes from module.alb.alb_arn_suffix."
@@ -43,8 +41,6 @@ variable "latency_p99_threshold_seconds" {
   description = "p99 target response time that triggers the latency alarm. Kept generous because Aurora Serverless v2 auto-pause makes the first request after idle slow."
   default     = 5
 }
-
-# --- ECS ---
 
 variable "ecs_cluster_name" {
   type        = string
@@ -85,8 +81,6 @@ variable "container_insights_enabled" {
   default     = true
 }
 
-# --- Logs ---
-
 variable "log_group_name" {
   type        = string
   description = "CloudWatch log group the ECS tasks write to. Comes from module.ecs.log_group_name."
@@ -97,8 +91,6 @@ variable "app_error_threshold" {
   description = "Number of application error log lines in the period that triggers an alarm."
   default     = 10
 }
-
-# --- RDS ---
 
 variable "db_cluster_identifier" {
   type        = string

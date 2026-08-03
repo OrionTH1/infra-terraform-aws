@@ -1,7 +1,3 @@
-# Deployment failures have no CloudWatch metric — ECS only emits them as EventBridge
-# events. Without this rule, a rolled-back deployment is silent: the circuit breaker
-# reverts to the previous version and nobody finds out until someone wonders why their
-# change never went live.
 resource "aws_cloudwatch_event_rule" "deployment_failed" {
   name        = "${var.project}-${var.environment}-ecs-deployment-failed"
   description = "ECS deployment failed or was rolled back by the circuit breaker."
@@ -26,8 +22,6 @@ resource "aws_cloudwatch_event_target" "deployment_failed_sns" {
   arn       = aws_sns_topic.alarms.arn
 }
 
-# Task placement failures (no capacity, subnet/ENI limits, image pull problems) are also
-# events rather than metrics, and they explain *why* a deployment is stuck.
 resource "aws_cloudwatch_event_rule" "task_placement_failed" {
   name        = "${var.project}-${var.environment}-ecs-task-placement-failed"
   description = "ECS could not place a task (capacity, networking or image pull failure)."

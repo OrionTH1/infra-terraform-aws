@@ -1,8 +1,3 @@
-# Logs → metric pipeline: counts application error lines and makes them alarmable.
-# The app logs structured JSON via pino, whose numeric levels are 50 = error, 60 = fatal.
-#
-# default_value = "0" matters: without it the metric is only published when the pattern
-# matches, so the alarm would never transition back to OK after an error spike.
 resource "aws_cloudwatch_log_metric_filter" "app_errors" {
   name           = "${var.project}-${var.environment}-app-errors"
   log_group_name = var.log_group_name
@@ -37,8 +32,6 @@ resource "aws_cloudwatch_metric_alarm" "app_errors" {
   }
 }
 
-# Saved Logs Insights queries. Free, and they turn "I need to debug this at 3am"
-# into a two-click operation instead of rewriting the query from memory.
 resource "aws_cloudwatch_query_definition" "recent_errors" {
   name            = "${var.project}-${var.environment}/recent-errors"
   log_group_names = [var.log_group_name]

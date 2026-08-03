@@ -1,7 +1,5 @@
 data "aws_region" "current" {}
 
-# One dashboard per environment, built with jsonencode so ARNs/names come from the
-# actual resources instead of being pasted in by hand from the console.
 resource "aws_cloudwatch_dashboard" "main" {
   dashboard_name = "${var.project}-${var.environment}"
 
@@ -18,7 +16,6 @@ resource "aws_cloudwatch_dashboard" "main" {
         }
       },
 
-      # --- Row 1: ALB ---
       {
         type   = "metric"
         x      = 0
@@ -73,7 +70,6 @@ resource "aws_cloudwatch_dashboard" "main" {
         }
       },
 
-      # --- Row 2: ECS ---
       {
         type   = "metric"
         x      = 0
@@ -134,7 +130,6 @@ resource "aws_cloudwatch_dashboard" "main" {
         }
       },
 
-      # --- Row 3: Aurora + application errors ---
       {
         type   = "metric"
         x      = 0

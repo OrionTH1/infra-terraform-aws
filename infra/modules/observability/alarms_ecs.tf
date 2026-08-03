@@ -27,8 +27,6 @@ resource "aws_cloudwatch_metric_alarm" "cpu_high" {
   }
 }
 
-# There is no memory-based autoscaling in this stack, so this is the only warning
-# before Fargate OOM-kills the task and silently replaces it.
 resource "aws_cloudwatch_metric_alarm" "memory_high" {
   alarm_name          = "${var.project}-${var.environment}-ecs-memory-high"
   alarm_description   = "Service memory above ${var.memory_threshold_percent}% — nothing scales on memory, so the next step is an OOM kill."
@@ -54,9 +52,6 @@ resource "aws_cloudwatch_metric_alarm" "memory_high" {
   }
 }
 
-# The "my service is down" alarm. Note treat_missing_data = "breaching": for this one
-# metric, the absence of data IS the incident — no data means no tasks reporting.
-# Requires Container Insights (ECS/ContainerInsights namespace).
 resource "aws_cloudwatch_metric_alarm" "running_tasks_low" {
   count = var.container_insights_enabled ? 1 : 0
 
