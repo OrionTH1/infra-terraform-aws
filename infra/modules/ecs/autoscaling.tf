@@ -16,7 +16,7 @@ resource "aws_appautoscaling_policy" "request_count_per_target" {
   target_tracking_scaling_policy_configuration {
     predefined_metric_specification {
       predefined_metric_type = "ALBRequestCountPerTarget"
-      resource_label          = "${var.alb_arn_suffix}/${var.target_group_arn_suffix}"
+      resource_label         = "${var.alb_arn_suffix}/${var.target_group_arn_suffix}"
     }
 
     target_value       = var.requests_per_target_target_value

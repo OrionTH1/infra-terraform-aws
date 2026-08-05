@@ -15,9 +15,8 @@ variable "alb_arn" {
 
 variable "managed_rule_groups" {
   type = list(object({
-    name     = string
-    priority = number
-    # true = count only (observe without blocking), false = enforce the group's actions.
+    name       = string
+    priority   = number
     count_only = bool
   }))
   description = "AWS managed rule groups to attach, in priority order. Start every new group in count mode, review the sampled requests in CloudWatch, then flip to blocking — a miscalibrated WAF breaks production traffic silently."

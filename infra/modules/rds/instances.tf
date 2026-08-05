@@ -9,8 +9,6 @@ resource "aws_rds_cluster_instance" "this" {
   engine             = aws_rds_cluster.this.engine
   engine_version     = aws_rds_cluster.this.engine_version
 
-  # Free at 7 days of retention (the rolling free tier). Not to be confused with
-  # CloudWatch Database Insights Advanced, which is not free.
   performance_insights_enabled          = true
   performance_insights_retention_period = 7
 

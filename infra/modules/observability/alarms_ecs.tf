@@ -1,7 +1,3 @@
-# This alarm is NOT redundant with autoscaling. Autoscaling here reacts to
-# ALBRequestCountPerTarget, so it only ever adds capacity when request volume rises.
-# High CPU *without* matching request volume — an infinite loop, GC thrash, a runaway
-# query — is invisible to it. That's the failure this alarm catches.
 resource "aws_cloudwatch_metric_alarm" "cpu_high" {
   alarm_name          = "${var.project}-${var.environment}-ecs-cpu-high"
   alarm_description   = "Service CPU above ${var.cpu_threshold_percent}% — high CPU decoupled from request volume is not something request-count autoscaling reacts to."

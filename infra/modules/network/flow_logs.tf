@@ -1,10 +1,3 @@
-# Flow logs are what make the "no NAT, fully isolated private subnets" claim
-# verifiable instead of just asserted: REJECT records show what tried to leave and
-# was refused.
-#
-# traffic_type is parameterised because ALL is the honest default for an audit trail
-# but multiplies ingestion cost; REJECT alone answers "is anything trying to escape?"
-# at a fraction of the volume.
 resource "aws_cloudwatch_log_group" "flow_logs" {
   # checkov:skip=CKV_AWS_158:Default CloudWatch Logs encryption. Flow logs contain IPs and ports, not secrets.
   count = var.enable_flow_logs ? 1 : 0

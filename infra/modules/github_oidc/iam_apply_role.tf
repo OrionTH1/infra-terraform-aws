@@ -32,10 +32,6 @@ resource "aws_iam_role" "apply" {
 }
 
 data "aws_iam_policy_document" "apply_permissions" {
-  # Broad per-service access rather than a hand-enumerated action list: mapping every
-  # API call Terraform makes across six modules is maintenance that goes stale on each
-  # provider upgrade. The reach is capped two ways instead — the region condition below,
-  # and the permissions boundary attached to this role (permissions_boundary.tf).
   statement {
     sid = "ManageProjectServices"
     actions = [
@@ -81,8 +77,6 @@ data "aws_iam_policy_document" "apply_permissions" {
     resources = ["arn:aws:iam::*:role/${var.project}-*"]
   }
 
-  # Managing the OIDC provider and the customer-managed policies (including this role's
-  # own permissions boundary) that this module creates.
   statement {
     sid = "ManageProjectIamPoliciesAndOidc"
     actions = [

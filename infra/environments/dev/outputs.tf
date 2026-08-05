@@ -8,10 +8,6 @@ output "alb_dns_name" {
   value       = module.alb.alb_dns_name
 }
 
-# sensitive = true does NOT encrypt anything — the value is still in plaintext in the
-# state file. What it does is keep the value out of `terraform plan` output, which this
-# repo posts as a PR comment (see .github/workflows/terraform-plan.yml) and which lives
-# in public Actions logs. That is the actual leak being closed here.
 output "db_cluster_endpoint" {
   description = "Writer endpoint of the Aurora cluster."
   value       = module.rds.cluster_endpoint

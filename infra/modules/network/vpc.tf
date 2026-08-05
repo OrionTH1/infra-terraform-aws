@@ -15,9 +15,6 @@ resource "aws_subnet" "public" {
   cidr_block        = each.value
   availability_zone = each.key
 
-  # Only the ALB lives in these subnets, and it brings its own public IPs. Auto-assigning
-  # public IPs would only affect EC2 instances launched here — which is exactly the
-  # accident worth preventing.
   map_public_ip_on_launch = false
 
   tags = {
@@ -37,9 +34,6 @@ resource "aws_subnet" "private" {
   }
 }
 
-# The default security group is created by AWS with the VPC and cannot be deleted.
-# Managing it here with no rules at all makes it inert: anything that accidentally
-# lands on it gets no connectivity, instead of the default allow-all-from-itself.
 resource "aws_default_security_group" "this" {
   vpc_id = aws_vpc.this.id
 

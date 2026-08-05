@@ -57,7 +57,7 @@ resource "aws_wafv2_web_acl" "this" {
       visibility_config {
         cloudwatch_metrics_enabled = true
         metric_name                = replace(rule.value.name, "AWSManagedRules", "")
-        sampled_requests_enabled = true
+        sampled_requests_enabled   = true
       }
     }
   }

@@ -9,8 +9,6 @@ resource "aws_lb" "this" {
   security_groups    = [var.alb_security_group_id]
   subnets            = var.public_subnet_ids
 
-  # Requests are rejected rather than forwarded when headers do not conform to RFC 7230,
-  # which closes a class of request-smuggling attacks.
   desync_mitigation_mode     = "defensive"
   drop_invalid_header_fields = true
 

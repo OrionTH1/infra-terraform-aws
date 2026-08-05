@@ -15,9 +15,6 @@ resource "aws_rds_cluster" "this" {
   master_username             = var.master_username
   manage_master_user_password = true
 
-  # Lets the application authenticate with short-lived IAM tokens instead of the master
-  # password. Not used by the app yet, but enabling it costs nothing and is a
-  # prerequisite for dropping the static credential later.
   iam_database_authentication_enabled = true
 
   db_subnet_group_name            = aws_db_subnet_group.this.name
@@ -31,8 +28,6 @@ resource "aws_rds_cluster" "this" {
   final_snapshot_identifier = var.skip_final_snapshot ? null : "${var.project}-${var.environment}-final"
   copy_tags_to_snapshot     = true
 
-  # Postgres logs (including slow queries once log_min_duration_statement is set)
-  # go to CloudWatch instead of being trapped inside the instance.
   enabled_cloudwatch_logs_exports = var.enabled_log_exports
 
   serverlessv2_scaling_configuration {
