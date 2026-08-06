@@ -38,7 +38,7 @@ variable "min_capacity_acu" {
 
 variable "max_capacity_acu" {
   type        = number
-  description = "Maximum Aurora Capacity Units each instance can scale up to. Sized against the writer carrying the whole ECS ceiling on its own, because the application only ever connects to the cluster (writer) endpoint. Ten tasks at the autoscaling target are 10,000 requests per minute, and a request in this workload issues about three queries, so the writer sees roughly 500 queries per second at peak. Four ACUs keep that near 45 percent utilization and still leave the ceiling low enough that a runaway is capped rather than billed indefinitely. Note that a promotion tier 0 reader mirrors the writer capacity, so the cluster bills roughly twice this number when busy."
+  description = "Maximum Aurora Capacity Units each instance can scale up to. In normal operation the application splits reads to the reader endpoint and writes to the writer, so at the ECS ceiling of 10,000 requests per minute the writer needs about 1 ACU and the reader about 2.5. What sizes this ceiling is losing the replica: every read falls back to the writer, which then needs roughly 3 ACUs to absorb the whole load on its own. Four leaves one scaling step of headroom above that case while still capping a runaway. Note that a promotion tier 0 reader mirrors the writer capacity, so the cluster bills roughly twice the writer figure when busy."
   default     = 4
 }
 

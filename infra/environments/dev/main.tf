@@ -79,6 +79,7 @@ module "ecs" {
   target_group_arn_suffix = module.alb.target_group_arn_suffix
   rds_master_secret_arn   = module.rds.master_user_secret_arn
   db_host                 = module.rds.cluster_endpoint
+  db_reader_host          = module.rds.cluster_reader_endpoint
   db_port                 = module.rds.cluster_port
   db_name                 = module.rds.database_name
 }

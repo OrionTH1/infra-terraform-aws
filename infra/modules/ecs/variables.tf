@@ -127,6 +127,11 @@ variable "db_host" {
   description = "Aurora cluster writer endpoint. Comes from module.rds.cluster_endpoint."
 }
 
+variable "db_reader_host" {
+  type        = string
+  description = "Aurora reader endpoint. Comes from module.rds.cluster_reader_endpoint. Aurora load-balances this endpoint across the reader instances, so read-only queries sent here never touch the writer. Reads through this endpoint can observe replication lag, which is why anything that must read its own write has to go to db_host instead."
+}
+
 variable "db_port" {
   type        = number
   description = "Aurora cluster port. Comes from module.rds.cluster_port."

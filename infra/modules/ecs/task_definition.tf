@@ -36,6 +36,10 @@ resource "aws_ecs_task_definition" "backend" {
           value = var.db_host
         },
         {
+          name  = "DB_READER_HOST"
+          value = var.db_reader_host
+        },
+        {
           name  = "DB_PORT"
           value = tostring(var.db_port)
         },
