@@ -6,6 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This repository is a fresh scaffold for AWS ECS infrastructure managed with Terraform. `main.tf` currently exists but is empty — there is no established module structure, provider configuration, or resource layout yet. When adding the first resources, use standard Terraform conventions (e.g. separate `variables.tf`, `outputs.tf`, `versions.tf` files) rather than growing a single `main.tf` indefinitely.
 
+## What the workload is meant to represent
+
+`backend/` is a placeholder image whose only job is to give ECS something to run. **Never size or calibrate anything against it.**
+
+The infra — and the simulator that explains it — targets a medium-to-large company's production service. When choosing capacity, thresholds, or simulation constants, assume the task is running a real backend: authentication on every request, routes with substantial business logic, and several database queries per request.
+
+This matters because the placeholder distorts every number. A single task and 0.5 ACU would serve it comfortably, which would make the autoscaling ceilings, the WAF limits, and the Aurora capacity range all look absurdly oversized — and would defeat the point of the project.
+
+Constants that describe the *workload* (per-request app time, queries per request) are declared assumptions about that imagined backend, not measurements of `backend/`. Record them as assumptions in `simulator/CALIBRATION.md` rather than presenting them as sourced. Constants that describe *AWS behavior* still have to come from AWS documentation or published benchmarks.
+
 ## Commands
 
 ```bash
