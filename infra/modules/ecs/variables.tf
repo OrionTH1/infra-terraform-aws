@@ -97,8 +97,8 @@ variable "min_capacity" {
 
 variable "max_capacity" {
   type        = number
-  description = "Maximum number of tasks autoscaling is allowed to scale out to."
-  default     = 4
+  description = "Maximum number of tasks autoscaling is allowed to scale out to. This is a blast-radius control, not a capacity target — target tracking only reaches it under sustained load or a runaway (retry storm, traffic that got past the WAF). At 10 tasks the service tops out around 10,000 requests per minute, and a task pegged for a full month costs roughly 9 USD, so the ceiling is cheap insurance rather than a standing cost."
+  default     = 10
 }
 
 variable "requests_per_target_target_value" {
