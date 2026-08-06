@@ -38,7 +38,7 @@ variable "min_capacity_acu" {
 
 variable "max_capacity_acu" {
   type        = number
-  description = "Maximum Aurora Capacity Units the instance can scale up to. Sized to keep up with the ECS ceiling — 10 tasks at the autoscaling target push about 10,000 requests per minute at the cluster. This is the expensive ceiling: ACUs bill per hour per instance, so 4 ACU across both instances costs far more when pegged than the entire Fargate fleet at its own ceiling. What keeps that affordable is min_capacity_acu staying at 0, which pauses the cluster when idle."
+  description = "Maximum Aurora Capacity Units each instance can scale up to. Sized against the writer carrying the whole ECS ceiling on its own, because the application only ever connects to the cluster (writer) endpoint. Ten tasks at the autoscaling target are 10,000 requests per minute, and a request in this workload issues about three queries, so the writer sees roughly 500 queries per second at peak. Four ACUs keep that near 45 percent utilization and still leave the ceiling low enough that a runaway is capped rather than billed indefinitely. Note that a promotion tier 0 reader mirrors the writer capacity, so the cluster bills roughly twice this number when busy."
   default     = 4
 }
 
