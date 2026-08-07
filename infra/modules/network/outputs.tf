@@ -40,7 +40,7 @@ output "private_route_table_id" {
 
 output "alb_security_group_id" {
   description = "ID of the security group meant for the Application Load Balancer (inbound 80/443 from the internet, outbound to the ECS security group)."
-  value       = aws_security_group.allow_http.id
+  value       = aws_security_group.alb_sg.id
 }
 
 output "ecs_security_group_id" {
