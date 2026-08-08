@@ -9,9 +9,9 @@ export const PACKET_LANE_OFFSET_PX = 7
 export const PACKET_FADE_MS = 150
 export const PACKET_DWELL_MS = 220
 
-const MIN_PACKETS_PER_SECOND = 0.4
-const MAX_PACKETS_PER_SECOND = 1.5
-const REQUESTS_PER_SECOND_PER_PACKET = 8
+const MIN_PACKETS_PER_SECOND = 0.55
+const MAX_PACKETS_PER_SECOND = 2
+const REQUESTS_PER_SECOND_PER_PACKET = 6
 const SECONDS_PER_MINUTE = 60
 
 export type PacketColor = 'default' | 'write' | 'blocked'
