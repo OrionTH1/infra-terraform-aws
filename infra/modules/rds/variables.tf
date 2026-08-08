@@ -26,26 +26,20 @@ variable "database_name" {
 
 variable "master_username" {
   type        = string
-  description = "Master username. The password itself is never set here — it's managed entirely by RDS via Secrets Manager (manage_master_user_password)."
+  description = "Master username. The password is generated and rotated by RDS through Secrets Manager."
   default     = "dbadmin"
 }
 
 variable "min_capacity_acu" {
   type        = number
-  description = "Minimum Aurora Capacity Units. 0 enables auto-pause after seconds_until_auto_pause of inactivity — the closest thing to 'scale to zero' Aurora Serverless v2 offers."
-  default     = 0
+  description = "Minimum Aurora Capacity Units per instance. 0 turns on auto-pause, which AWS scopes to dev and test workloads: a paused cluster takes about 15 seconds to accept the next connection."
+  default     = 0.5
 }
 
 variable "max_capacity_acu" {
   type        = number
-  description = "Maximum Aurora Capacity Units each instance can scale up to. In normal operation the application splits reads to the reader endpoint and writes to the writer, so at the ECS ceiling of 10,000 requests per minute the writer needs about 1 ACU and the reader about 2.5. What sizes this ceiling is losing the replica: every read falls back to the writer, which then needs roughly 3 ACUs to absorb the whole load on its own. Four leaves one scaling step of headroom above that case while still capping a runaway. Note that a promotion tier 0 reader mirrors the writer capacity, so the cluster bills roughly twice the writer figure when busy."
+  description = "Maximum Aurora Capacity Units per instance. Sized so the writer alone can absorb the full read and write load at the ECS ceiling if the replica is lost."
   default     = 4
-}
-
-variable "seconds_until_auto_pause" {
-  type        = number
-  description = "Seconds of inactivity before the cluster auto-pauses. Only takes effect when min_capacity_acu is 0."
-  default     = 3600
 }
 
 variable "backup_retention_days" {
@@ -56,19 +50,19 @@ variable "backup_retention_days" {
 
 variable "deletion_protection" {
   type        = bool
-  description = "Whether to enable deletion protection on the cluster. Keep false in dev (iterating on apply/destroy); set true in prod."
+  description = "Whether to block deletion of the cluster."
   default     = false
 }
 
 variable "skip_final_snapshot" {
   type        = bool
-  description = "Whether to skip taking a final snapshot on destroy. Keep true in dev for fast, clean teardown; set false in prod."
+  description = "Whether to skip the final snapshot when the cluster is destroyed."
   default     = true
 }
 
 variable "log_statement" {
   type        = string
-  description = "Which statements Postgres logs: \"none\", \"ddl\" (schema changes), \"mod\" (writes) or \"all\". \"all\" would log every health-check query."
+  description = "Which statements Postgres logs: \"none\", \"ddl\" (schema changes), \"mod\" (writes) or \"all\"."
   default     = "ddl"
 }
 
@@ -86,6 +80,6 @@ variable "enabled_log_exports" {
 
 variable "instance_count" {
   type        = number
-  description = "Number of cluster instances. The first one created becomes the writer automatically; any additional ones are readers that Aurora can promote on failover. 1 = no automatic failover; 2+ = real HA."
+  description = "Number of cluster instances. The first is the writer; the rest are readers Aurora can promote on failover."
   default     = 2
 }

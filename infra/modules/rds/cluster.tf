@@ -3,7 +3,7 @@ data "aws_rds_engine_version" "postgresql" {
 }
 
 resource "aws_rds_cluster" "this" {
-  # checkov:skip=CKV_AWS_139:Deletion protection is parameterised (var.deletion_protection); false in dev by design, since this environment is destroyed between sessions. prod tfvars set it to true.
+  # checkov:skip=CKV_AWS_139:Deletion protection is parameterised (var.deletion_protection). The default is off so a dev environment can be torn down; production sets it on.
   # checkov:skip=CKV_AWS_327:Encryption uses the AWS-managed RDS key. A customer-managed KMS key adds $1/month plus key administration for no threat this project actually faces — the data is a health-check table in a single-account dev environment.
   # checkov:skip=CKV2_AWS_8:AWS Backup adds a second backup mechanism on top of backup_retention_period, which already provides point-in-time recovery. Redundant at this scale.
   cluster_identifier = "${var.project}-${var.environment}"
@@ -31,9 +31,8 @@ resource "aws_rds_cluster" "this" {
   enabled_cloudwatch_logs_exports = var.enabled_log_exports
 
   serverlessv2_scaling_configuration {
-    min_capacity             = var.min_capacity_acu
-    max_capacity             = var.max_capacity_acu
-    seconds_until_auto_pause = var.seconds_until_auto_pause
+    min_capacity = var.min_capacity_acu
+    max_capacity = var.max_capacity_acu
   }
 
   tags = {
