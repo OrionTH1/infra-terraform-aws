@@ -78,6 +78,7 @@ Notas de implementação:
 - Application Load Balancer:
   - Subnets públicas, multi-AZ.
   - Target Group com health check apontando para `/api/v1/health` (ajustar threshold/interval para failover rápido, mas sem flapping).
+  - O health check é **raso de propósito**: responde 200 se o processo está de pé e não toca o Aurora. Um check profundo amarrado ao Target Group transforma soluço de dependência em indisponibilidade total — todas as tasks falham o check ao mesmo tempo, o ALB fica sem target saudável e devolve 503, mesmo que a aplicação ainda pudesse servir rotas que não usam o banco. Verificação de dependência, quando existir, vai numa rota separada que alarmes e dashboard consomem, e que o ALB não usa para ejetar target.
   - Listener HTTPS (443) com certificado ACM; listener HTTP (80) redirecionando para HTTPS.
 - Auto Scaling do ECS Service baseado em métrica de CPU/memória (Target Tracking) ou em request count por target do ALB — escolher uma e justificar.
 
@@ -311,7 +312,7 @@ Implementar em camadas incrementais, validando cada uma antes de avançar — ev
 1. ✅ **Rede**: VPC, subnets, route tables, IGW, VPC Endpoints (ECR api/dkr, S3 gateway, Logs, Secrets Manager), security groups vazios (sem regras específicas ainda).
 2. ✅ **Compute sem HTTPS**: ECS Fargate + ALB (só HTTP), API mínima respondendo em `/api/v1/health` — validar o caminho internet → ALB → ECS.
 3. ✅ **Banco**: Aurora Serverless v2 + subnet group + Secrets Manager, validando conectividade a partir da própria task ECS (já em pé desde a etapa anterior) ou de uma instância temporária/bastion.
-4. ✅ **Conectar API ao banco**: mesmo que a API não use o banco de fato ainda, validar que a task consegue alcançar o Aurora pela rede/SG (ex.: endpoint de health check "estendido" que testa a conexão).
+4. ✅ **Conectar API ao banco**: pools de writer e reader configurados e prontos para as rotas futuras. A conectividade foi validada por um health check "estendido" que consultava os dois endpoints; ele foi removido depois, ao amarrar essa checagem ao Target Group virar um risco de indisponibilidade total (ver seção do ALB). Os pools continuam no lugar.
 5. ⏸️ **HTTPS + domínio** (em espera — aguardando aquisição de um domínio; ver nota abaixo): Route53 + ACM + listener HTTPS, redirect HTTP→HTTPS.
 6. ✅ **CI/CD**: workflows de build/push da API e de plan/apply do Terraform.
 7. ✅ **Observabilidade**: log retention, Container Insights, alarmes.
