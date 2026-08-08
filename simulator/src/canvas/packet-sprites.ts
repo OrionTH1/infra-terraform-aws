@@ -1,7 +1,10 @@
 import { PACKET_GLOW_PX, PACKET_RADIUS, type PacketColor } from '../simulation/packets'
 
 const SPRITE_RESOLUTION = 6
-const RESPONSE_RING_WIDTH_PX = 1.4
+const RESPONSE_RING_WIDTH_PX = 1.2
+const RESPONSE_RADIUS_SCALE = 0.7
+const RESPONSE_GLOW_SCALE = 0.5
+const RESPONSE_STROKE_ALPHA = 0.75
 const RESPONSE_TOKEN: Record<PacketColor, string> = {
   default: '--color-status-healthy',
   write: '--color-status-healthy',
@@ -41,7 +44,8 @@ function toRgb(color: string): [number, number, number] {
   return [(value >> 16) & 255, (value >> 8) & 255, value & 255]
 }
 
-function drawSprite(token: string, glowAlpha: number, shape: PacketShape): HTMLCanvasElement {
+function drawSprite(token: string, requestGlowAlpha: number, shape: PacketShape): HTMLCanvasElement {
+  const glowAlpha = shape === 'response' ? requestGlowAlpha * RESPONSE_GLOW_SCALE : requestGlowAlpha
   const size = SPRITE_SIZE_PX * SPRITE_RESOLUTION
   const sprite = document.createElement('canvas')
   sprite.width = size
@@ -74,9 +78,9 @@ function drawSprite(token: string, glowAlpha: number, shape: PacketShape): HTMLC
   const ringWidth = RESPONSE_RING_WIDTH_PX * SPRITE_RESOLUTION
 
   context.beginPath()
-  context.arc(centre, centre, core - ringWidth / 2, 0, Math.PI * 2)
+  context.arc(centre, centre, core * RESPONSE_RADIUS_SCALE - ringWidth / 2, 0, Math.PI * 2)
   context.lineWidth = ringWidth
-  context.strokeStyle = solid
+  context.strokeStyle = `rgba(${red}, ${green}, ${blue}, ${RESPONSE_STROKE_ALPHA})`
   context.stroke()
 
   return sprite
