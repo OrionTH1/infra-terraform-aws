@@ -30,6 +30,6 @@ variable "app_port" {
 
 variable "enable_deletion_protection" {
   type        = bool
-  description = "Whether to enable deletion protection on the ALB. Keep false in dev (iterating on apply/destroy); set true in prod."
+  description = "Whether to block deletion of the load balancer."
   default     = false
 }

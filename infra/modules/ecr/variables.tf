@@ -10,6 +10,6 @@ variable "environment" {
 
 variable "force_delete" {
   type        = bool
-  description = "Whether to allow deleting the repository even if it still contains images. Keep true in dev (frequent destroy/apply cycles with manually pushed images); set false in prod to avoid accidentally wiping image history."
+  description = "Whether to allow deleting the repository while it still contains images."
   default     = true
 }

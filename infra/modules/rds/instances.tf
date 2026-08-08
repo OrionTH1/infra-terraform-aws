@@ -1,6 +1,6 @@
 resource "aws_rds_cluster_instance" "this" {
   # checkov:skip=CKV_AWS_118:Enhanced Monitoring is billed per instance and overlaps with Performance Insights (enabled below, free at 7-day retention) plus the CloudWatch alarms in the observability module.
-  # checkov:skip=CKV_AWS_354:Performance Insights uses the AWS-managed key. A CMK here would cost $1/month to protect 7 days of query statistics in a dev account.
+  # checkov:skip=CKV_AWS_354:Performance Insights uses the AWS-managed key. A CMK would add cost and key administration to protect 7 days of query statistics.
   count = var.instance_count
 
   identifier         = "${var.project}-${var.environment}-aurora-${count.index}"
