@@ -75,6 +75,7 @@ Notas de implementação:
   - Rodando nas subnets privadas.
   - Registrado no Target Group do ALB.
   - Desired count ≥ 2 para HA real entre AZs.
+  - `health_check_grace_period_seconds` definido (120s). São dois juízes olhando a mesma task: o ALB decide se manda tráfego, o scheduler do ECS decide se a task vive — e o grace period é a única coisa que faz o segundo ignorar o primeiro enquanto a task sobe. Sem ele o valor é 0, e a margem que sobra é só a do target group (`unhealthy_threshold × interval` ≈ 90s). Uma aplicação que demora mais que isso para aquecer entra num laço que se sustenta sozinho: a task é parada antes de conseguir passar no check, a substituta também, e nenhum alarme corrige — `RunningTaskCount` dispara e continua disparando.
 - Application Load Balancer:
   - Subnets públicas, multi-AZ.
   - Target Group com health check apontando para `/api/v1/health` (ajustar threshold/interval para failover rápido, mas sem flapping).
