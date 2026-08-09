@@ -86,7 +86,8 @@ ALB → ECS Service (N tasks) → (Aurora, opcional/decorativo). Posição arras
 Site estático em Vercel ou GitHub Pages, sem custo. Pode viver neste mesmo monorepo (ex.: `simulator/`) ou em repo próprio linkado no README principal — decisão de organização, não bloqueia o design acima.
 
 ## Falta
-- [ ] Simular o S3 da aplicação — uma rota do backend lendo ou gravando num bucket próprio. Diferente do S3 que já existe no desenho, que é onde o ECR guarda as camadas de imagem.
+
+Nada aberto no momento.
 
 ## Revisão de agosto de 2026 — o que a auditoria achou
 
@@ -120,6 +121,11 @@ Levantamento feito recurso a recurso no `infra/` e constante a constante no simu
   **4 dos 9 são alimentáveis** com o que a simulação produz hoje — `no_healthy_hosts`, `running_tasks_low`, `latency_p99` e `error_rate`. Explodir todas as tasks acende `no_healthy_hosts` de verdade, depois de dois períodos de um minuto, e ele volta a OK sozinho quando as substitutas ficam healthy. Os outros 5 dependem de métricas que o simulador não modela (CPU, memória, conexões do Aurora, linhas de erro de log) e de `UnHealthyHostCount`, que precisa do estado `unhealthy` adiado acima. Ficam em INSUFFICIENT_DATA e aparecem esmaecidos, de propósito: melhor um alarme honestamente sem dado do que um número inventado.
 
 ## Decidido não fazer
+- **Simular o S3 da aplicação.** Estava listado como "uma rota do backend lendo ou gravando num bucket próprio", para separar visualmente o S3 da aplicação do S3 onde o ECR guarda as camadas. A premissa não se sustenta: o `backend/` não fala com S3, e o único acesso a S3 desta arquitetura é o pull de camadas — que nem é da aplicação, é o ECS agent seguindo a URL pré-assinada que o ECR devolve, antes do container existir.
+
+  Implementar exigiria três invenções encadeadas: um bucket no `infra/` que nada escreve, uma policy na task role que nada exercita, e uma fração de requests percorrendo um caminho que o código não tem. Três fabricações para uma distinção que o tooltip do card de S3 já faz em uma frase — *"This bucket belongs to ECR, not to this project, which owns no bucket of its own."* Construir o bucket tornaria essa frase falsa. O item não era só desnecessário: ia na direção contrária do que o desenho já afirma certo.
+
+  Se um dia a aplicação precisar de um bucket de verdade — upload de usuário, export de relatório — o caminho de rede já está pronto e não muda nada: o gateway endpoint e a regra `allow_egress_to_s3_gateway` no `ecs_sg` já existem por causa do ECR, e o consumidor novo entra pela mesma porta, sem NAT e sem regra adicional. Aí o bucket teria consumidor, e o item volta a fazer sentido.
 - **Ejetar target que ficou não saudável (adiado, não rejeitado).** O `aws_lb_target_group` tem `unhealthy_threshold = 3` e o simulador só modela o `healthy_threshold`. Estava listado como lacuna, mas não é: `unhealthy_threshold` não aparece em lugar nenhum da tela — o único tooltip que fala de health check (`useTaskColumnLayout.ts`) descreve só a direção saudável. Não há promessa quebrada, há feature ausente, e o caminho `failed` do blast já entrega a lição inteira (task morre, ECS repõe, cold start de 80s, latência sobe no intervalo) e é fiel: container essencial sai com 137, ECS para a task, deregistra.
 
   O que a pesquisa na doc da AWS mostrou é que o mecanismo é mais caro do que o item sugeria. `unhealthy` é estado próprio, não `draining` — o target continua registrado, continua sendo checkado e volta sozinho depois de 2 sucessos. E quem mata a task é o ECS, com start-before-stop: *"the service scheduler will first start a replacement task"*, e só para a doente quando a substituta fica `HEALTHY`. Modelar isso direito exige estado novo, relógio de health check por task com fase própria, contagem N+1 no `desiredCount`, recuperação, e uma segunda ferramenta ("quebrar o endpoint") sem a qual não dá para ver a diferença para o blast.
