@@ -88,6 +88,20 @@ Site estático em Vercel ou GitHub Pages, sem custo. Pode viver neste mesmo mono
 ## Falta
 - [ ] Simular o S3 da aplicação — uma rota do backend lendo ou gravando num bucket próprio. Diferente do S3 que já existe no desenho, que é onde o ECR guarda as camadas de imagem.
 
+## Revisão de agosto de 2026 — o que a auditoria achou
+
+Levantamento feito recurso a recurso no `infra/` e constante a constante no simulador. Cinco itens, três no Terraform e dois no simulador. Os três primeiros mudam comportamento da infra real; os dois últimos são fidelidade do desenho.
+
+- [x] **`health_check_grace_period_seconds` no `aws_ecs_service`.** Ausente, e o default é 0. Quem decide se a task vive é o scheduler do ECS lendo o estado do target no ALB — e o grace period é a única coisa que faz ele ignorar esse estado enquanto a task sobe. Sem ele, a janela que a task tem é só a do target group: `unhealthy_threshold = 3` × `interval = 30s` ≈ 90s. Um backend de produção com pool de conexões e warmup atravessa 90s sem esforço, e o modo de falha é auto-sustentado: a task morre antes de ficar pronta, o ECS cria outra, que também não chega a tempo. Nenhum alarme resolve — `RunningTaskCount` dispara e continua disparando.
+
+- [x] **`deregistration_delay.timeout_seconds` no target group.** Ausente, default 300s. Cinco minutos de drain por task, em todo scale-in e em toda onda de deploy, com o Fargate cobrando o tempo inteiro. E é o número que o simulador contradiz: `TASK_LIFECYCLE.drainingMs` desenha 5s. O valor certo é o request mais longo que a aplicação atende, não mais.
+
+- [x] **`required_providers` por módulo.** Não é bug: um módulo sem a declaração assume `hashicorp/<nome>`, que é o endereço certo. É promessa do `ARCHITECTURE.md` seção 7 que o código não cumpre, e um módulo que não declara suas dependências não é reutilizável fora do root onde nasceu. O caso concreto que existe hoje: `github_oidc` usa o provider `tls` sem declarar em lugar nenhum do módulo.
+
+- [x] **Fail open do target group.** O `splitAtTheDoor` zera tudo em `turnedAway` quando não há target saudável. O ALB faz o oposto: `unhealthy_state_routing.minimum_healthy_targets.count` tem default 1, e a doc é explícita — *"if a target group contains only unhealthy registered targets, the load balancer routes requests to all those targets"*. Este é o único ponto em que o simulador **afirma** algo que a AWS não faz, e afirma na cena mais assistida da demo. A história certa não é "o load balancer recusa tudo", é "o load balancer tenta mesmo assim, e o que volta é 5xx da aplicação em vez de 503 do balanceador".
+
+- [x] **`TASK_LIFECYCLE.drainingMs` sem origem.** O `CALIBRATION.md` se compromete a listar todo número que não vem do Terraform, da AWS ou de premissa declarada. Os 5s do drain não estavam em nenhuma das três nem na seção de exceções. Sai de graça junto com o `deregistration_delay`.
+
 ## Resolvido
 - [x] Representações visuais de response de volta — toda request faz o circuito completo até o usuário, com anel verde na volta e faixas deslocadas para ida e volta não se sobreporem.
 - [x] Performance no zoom do ECS Cluster — a causa era `transition: transform` nos quatro tipos de node do cluster, que promovia camadas de composição a cada frame. De 25,8 fps para 77 fps em produção.
