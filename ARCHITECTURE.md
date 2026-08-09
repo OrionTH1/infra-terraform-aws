@@ -80,6 +80,7 @@ Notas de implementação:
   - Subnets públicas, multi-AZ.
   - Target Group com health check apontando para `/api/v1/health` (ajustar threshold/interval para failover rápido, mas sem flapping).
   - O health check é **raso de propósito**: responde 200 se o processo está de pé e não toca o Aurora. Um check profundo amarrado ao Target Group transforma soluço de dependência em indisponibilidade total — todas as tasks falham o check ao mesmo tempo, o ALB fica sem target saudável e devolve 503, mesmo que a aplicação ainda pudesse servir rotas que não usam o banco. Verificação de dependência, quando existir, vai numa rota separada que alarmes e dashboard consomem, e que o ALB não usa para ejetar target.
+  - `deregistration_delay` definido explicitamente (30s) em vez do default de 300s da AWS. O delay é o tempo que o target passa em `draining` terminando as requisições em voo, e o valor certo é a requisição mais longa que a aplicação atende — não mais. Com os 300s do default, todo scale-in e toda onda de deploy arrastam cinco minutos por task, cobrados pelo Fargate o tempo inteiro, e o circuit breaker demora o mesmo tanto a mais para julgar um deploy quebrado.
   - Listener HTTPS (443) com certificado ACM; listener HTTP (80) redirecionando para HTTPS.
 - Auto Scaling do ECS Service baseado em métrica de CPU/memória (Target Tracking) ou em request count por target do ALB — escolher uma e justificar.
 
