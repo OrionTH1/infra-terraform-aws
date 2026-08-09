@@ -97,6 +97,14 @@ Site estático em Vercel ou GitHub Pages, sem custo. Pode viver neste mesmo mono
 
   A correção é `abandonDatabaseTrip`: em vez de sumir, o pacote desiste do que está à frente, mantém as pernas que já percorreu e volta pelo caminho que ainda existe, marcado com a cor `rejected`. É o que um 5xx é — a request entrou, o app não alcançou o banco, a resposta volta. Apagar o pacote no meio do voo afirmava que a request nunca existiu.
 
+- [x] **Mostrar alarme disparando.** Os 9 alarmes do `modules/observability` e o tópico SNS onde eles caem agora existem na tela. Cuidado com a confusão fácil, que continua valendo: o `alarms OK` do card do Application Auto Scaling é outro mecanismo — são os AlarmHigh/AlarmLow do target tracking, que a AWS cria sozinha.
+
+  **O motor** é `simulation/observability-alarms.ts`: carrega as 9 definições com o endereço Terraform de cada uma e reproduz a semântica do CloudWatch — período, `evaluation_periods`, estatística por período (`Minimum` para HealthyHostCount, `Maximum` para UnHealthyHostCount, `Sum` para as linhas de log), `treat_missing_data`, e os três estados OK / ALARM / INSUFFICIENT_DATA. O store amostra a cada tick.
+
+  **A parte visual** são dois nodes de control plane à direita, na mesma faixa do WAF e do Auto Scaling: `CloudWatchAlarmsNode` lista as 9 linhas com estado e condição (`< 2 · 2×1m`), e `SnsTopicNode` acende junto. A única aresta entre eles é o `alarm_actions`, que vira `Publish` em vermelho quando algo dispara. Nenhuma aresta de métrica entra no card: o CloudWatch puxa cada métrica de quem a publica, não fica num caminho de request — desenhar seta de entrada seria mentira topológica.
+
+  **4 dos 9 são alimentáveis** com o que a simulação produz hoje — `no_healthy_hosts`, `running_tasks_low`, `latency_p99` e `error_rate`. Explodir todas as tasks acende `no_healthy_hosts` de verdade, depois de dois períodos de um minuto, e ele volta a OK sozinho quando as substitutas ficam healthy. Os outros 5 dependem de métricas que o simulador não modela (CPU, memória, conexões do Aurora, linhas de erro de log) e de `UnHealthyHostCount`, que precisa do estado `unhealthy` adiado acima. Ficam em INSUFFICIENT_DATA e aparecem esmaecidos, de propósito: melhor um alarme honestamente sem dado do que um número inventado.
+
 ## Decidido não fazer
 - **Ejetar target que ficou não saudável (adiado, não rejeitado).** O `aws_lb_target_group` tem `unhealthy_threshold = 3` e o simulador só modela o `healthy_threshold`. Estava listado como lacuna, mas não é: `unhealthy_threshold` não aparece em lugar nenhum da tela — o único tooltip que fala de health check (`useTaskColumnLayout.ts`) descreve só a direção saudável. Não há promessa quebrada, há feature ausente, e o caminho `failed` do blast já entrega a lição inteira (task morre, ECS repõe, cold start de 80s, latência sobe no intervalo) e é fiel: container essencial sai com 137, ECS para a task, deregistra.
 
@@ -111,10 +119,4 @@ Site estático em Vercel ou GitHub Pages, sem custo. Pode viver neste mesmo mono
 
 Levantada comparando recurso a recurso. Não é feature nova — é promessa que o simulador já faz e não cumpre.
 
-- [ ] **Mostrar alarme disparando.** São 9 alarmes no `modules/observability` mais o tópico SNS onde eles caem, e nenhum jamais acende. Atenção a uma confusão fácil: o `alarms OK` que já está na tela é do card do Application Auto Scaling, e são os AlarmHigh/AlarmLow do target tracking — outro mecanismo, que a AWS cria sozinha. Os 9 do módulo de observabilidade não têm node nenhum.
-
-  **Metade feita.** O motor existe e está testado: `simulation/observability-alarms.ts` carrega as 9 definições com o endereço Terraform de cada uma, e reproduz a semântica do CloudWatch — período, `evaluation_periods`, estatística por período (`Minimum` para HealthyHostCount, `Maximum` para UnHealthyHostCount, `Sum` para as linhas de log), `treat_missing_data`, e os três estados OK / ALARM / INSUFFICIENT_DATA. O store amostra a cada tick e o alarme `no_healthy_hosts` já dispara de verdade quando as tasks são explodidas, e volta a OK sozinho quando as substitutas ficam healthy.
-
-  **Falta a metade visual**: node de CloudWatch Alarms, node do tópico SNS, arestas e o estado aceso no canvas. Fica em `initial-graph.ts`, `node-data.ts`, `useRenderGraph.ts` e `useNetworkZoneLayout.ts`.
-
-  **4 dos 9 são alimentáveis** com o que a simulação produz hoje — `no_healthy_hosts`, `running_tasks_low`, `latency_p99` e `error_rate`. Os outros 5 dependem de métricas que o simulador não modela (CPU, memória, conexões do Aurora, linhas de erro de log) e de `UnHealthyHostCount`, que precisa do estado `unhealthy` adiado acima. Esses ficam em INSUFFICIENT_DATA de propósito: melhor um alarme honestamente sem dado do que um número inventado.
+Nenhuma aberta no momento.

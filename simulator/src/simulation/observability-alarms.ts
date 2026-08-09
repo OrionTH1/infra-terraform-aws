@@ -63,7 +63,7 @@ export const OBSERVABILITY_ALARMS: AlarmDefinition[] = [
     terraformAddress: 'aws_cloudwatch_metric_alarm.error_rate',
     metricName: '5xx error rate (%)',
     namespace: 'AWS/ApplicationELB',
-    statistic: 'Sum',
+    statistic: 'Average',
     periodMs: 300 * SECOND_MS,
     evaluationPeriods: 2,
     threshold: 5,
@@ -139,8 +139,8 @@ export const OBSERVABILITY_ALARMS: AlarmDefinition[] = [
   {
     key: 'appErrorLines',
     terraformAddress: 'aws_cloudwatch_metric_alarm.app_errors',
-    metricName: 'ErrorCount',
-    namespace: 'ecs-terraform-infra',
+    metricName: 'ApplicationErrorCount',
+    namespace: 'ecs-portfolio/dev',
     statistic: 'Sum',
     periodMs: 300 * SECOND_MS,
     evaluationPeriods: 1,
@@ -261,4 +261,20 @@ export function recordAlarmSamples(board: AlarmBoard, samples: AlarmSamples, now
 
 export function firingAlarms(board: AlarmBoard): AlarmDefinition[] {
   return OBSERVABILITY_ALARMS.filter((alarm) => isFiring(board[alarm.key]))
+}
+
+export function alarmName(definition: AlarmDefinition): string {
+  return definition.terraformAddress.split('.')[1]
+}
+
+const COMPARISON_SYMBOL: Record<ComparisonOperator, string> = {
+  GreaterThanThreshold: '>',
+  LessThanThreshold: '<',
+}
+
+export function alarmCondition(definition: AlarmDefinition): string {
+  const symbol = COMPARISON_SYMBOL[definition.comparisonOperator]
+  const periodMinutes = definition.periodMs / 60_000
+
+  return `${symbol} ${definition.threshold} · ${definition.evaluationPeriods}×${periodMinutes}m`
 }

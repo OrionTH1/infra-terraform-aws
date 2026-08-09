@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   aggregate,
+  alarmCondition,
+  alarmName,
   createAlarmRuntime,
   OBSERVABILITY_ALARMS,
   recordSample,
@@ -55,6 +57,27 @@ describe('what the simulator reads off the terraform', () => {
       'targetResponseTimeP99Seconds',
       'runningTaskCount',
     ])
+  })
+})
+
+describe('what the canvas prints for each alarm', () => {
+  it('names the alarm the way the terraform resource is named', () => {
+    const names = OBSERVABILITY_ALARMS.map(alarmName)
+
+    expect(names).toContain('no_healthy_hosts')
+    expect(names.every((name) => !name.includes('.'))).toBe(true)
+  })
+
+  it('spells out the threshold and how long it has to hold', () => {
+    const noHealthyHosts = OBSERVABILITY_ALARMS.find((alarm) => alarm.key === 'healthyHostCount')
+
+    expect(alarmCondition(noHealthyHosts!)).toBe('< 2 · 2×1m')
+  })
+
+  it('uses the greater-than symbol for the alarms that watch a ceiling', () => {
+    const latency = OBSERVABILITY_ALARMS.find((alarm) => alarm.key === 'targetResponseTimeP99Seconds')
+
+    expect(alarmCondition(latency!)).toBe('> 5 · 3×5m')
   })
 })
 

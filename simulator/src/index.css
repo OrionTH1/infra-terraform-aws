@@ -164,6 +164,22 @@
   animation: cache-pulse 700ms linear infinite;
 }
 
+@keyframes alarm-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgb(239 68 68 / 0.45);
+  }
+  50% {
+    opacity: 0.55;
+    box-shadow: 0 0 0 3px rgb(239 68 68 / 0);
+  }
+}
+
+.alarm-pulse {
+  animation: alarm-pulse 1200ms ease-in-out infinite;
+}
+
 @keyframes replication-dash {
   to {
     stroke-dashoffset: -16;
@@ -620,7 +636,12 @@
   .signal-dash,
   .replication-dash,
   .cache-pulse,
+  .alarm-pulse,
   .copy-breathe {
+    animation: none;
+  }
+
+  .door-mark.carrying::after {
     animation: none;
   }
 

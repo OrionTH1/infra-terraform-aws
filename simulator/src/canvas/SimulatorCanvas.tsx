@@ -13,6 +13,8 @@ import { RegionalServiceNode } from '../nodes/infra/RegionalServiceNode'
 import { AuroraClusterNode } from '../nodes/infra/AuroraClusterNode'
 import { ClusterVolumeNode } from '../nodes/infra/ClusterVolumeNode'
 import { RdsInstanceNode } from '../nodes/infra/RdsInstanceNode'
+import { CloudWatchAlarmsNode } from '../nodes/infra/CloudWatchAlarmsNode'
+import { SnsTopicNode } from '../nodes/infra/SnsTopicNode'
 import { UserNode } from '../nodes/interaction/UserNode'
 import { UserGroupNode } from '../nodes/interaction/UserGroupNode'
 import { RequestFlowEdge } from '../edges/RequestFlowEdge'
@@ -63,6 +65,8 @@ const nodeTypes = {
   regionalService: RegionalServiceNode,
   clusterVolume: ClusterVolumeNode,
   rdsInstance: RdsInstanceNode,
+  cloudWatchAlarms: CloudWatchAlarmsNode,
+  snsTopic: SnsTopicNode,
   user: UserNode,
   userGroup: UserGroupNode,
 }

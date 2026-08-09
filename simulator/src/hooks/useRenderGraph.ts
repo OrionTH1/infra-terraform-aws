@@ -11,6 +11,7 @@ import {
   WAF_TO_ALB_EDGE_ID,
   METRIC_EDGE_ID,
   DESIRED_COUNT_EDGE_ID,
+  ALARMS_TO_SNS_EDGE_ID,
   REGION_NODE_ID,
   isEdgeUnderSecurityGroupRule,
   servicesBehindDoor,
@@ -24,6 +25,12 @@ import {
   type AuroraAvailability,
 } from '../simulation/aurora'
 import { currentAlarm } from '../simulation/autoscaling-alarm'
+import {
+  OBSERVABILITY_ALARMS,
+  alarmCondition,
+  alarmName,
+  isFiring,
+} from '../simulation/observability-alarms'
 import { countServiceTasks } from '../simulation/task-counts'
 import { isPullingImage } from '../simulation/image-pull'
 import { isFetchingSecret } from '../simulation/task-egress'
@@ -42,8 +49,11 @@ import type {
   SimulatorFlowEdge,
 } from '../types/edge-data'
 import type {
+  AlarmRow,
   AlbNodeData,
   AuroraClusterNodeData,
+  CloudWatchAlarmsNodeData,
+  SnsTopicNodeData,
   AutoScalingNodeData,
   EcsServiceNodeData,
   NetworkZoneNodeData,
@@ -169,7 +179,25 @@ export function useRenderGraph({
   const desiredCount = useSimulationStore((state) => state.desiredCount)
   const scaleOutBreachAt = useSimulationStore((state) => state.scaleOutBreachAt)
   const scaleInBreachAt = useSimulationStore((state) => state.scaleInBreachAt)
+  const alarmBoard = useSimulationStore((state) => state.alarms)
   const hoveredBoundaryId = useSecurityGroupStore((state) => state.hoveredBoundaryId)
+
+  const alarmRows = useMemo(
+    (): AlarmRow[] =>
+      OBSERVABILITY_ALARMS.map((alarm) => ({
+        key: alarm.key,
+        name: alarmName(alarm),
+        condition: alarmCondition(alarm),
+        state: alarmBoard[alarm.key].state,
+        isModelled: alarm.isModelled,
+      })),
+    [alarmBoard],
+  )
+
+  const firingAlarmCount = useMemo(
+    () => OBSERVABILITY_ALARMS.filter((alarm) => isFiring(alarmBoard[alarm.key])).length,
+    [alarmBoard],
+  )
 
   const serviceTaskCounts = useMemo(() => countServiceTasks(tasks.map((task) => task.status)), [tasks])
   const isPullingTaskImage = useMemo(() => isPullingImage(tasks.map((task) => task.status)), [tasks])
@@ -282,6 +310,26 @@ export function useRenderGraph({
           return { ...node, position, data }
         }
 
+        if (node.type === 'cloudWatchAlarms') {
+          const data: CloudWatchAlarmsNodeData = {
+            ...node.data,
+            rows: alarmRows,
+            firingCount: firingAlarmCount,
+            status: firingAlarmCount > 0 ? 'error' : 'idle',
+          }
+          return { ...node, position: networkZones.cloudWatchAlarmsPosition, data }
+        }
+
+        if (node.type === 'snsTopic') {
+          const data: SnsTopicNodeData = {
+            ...node.data,
+            firingCount: firingAlarmCount,
+            isPublishing: firingAlarmCount > 0,
+            status: firingAlarmCount > 0 ? 'error' : 'idle',
+          }
+          return { ...node, position: networkZones.snsTopicPosition, data }
+        }
+
         if (node.type === 'waf') {
           const data: WafNodeData = {
             ...node.data,
@@ -375,6 +423,8 @@ export function useRenderGraph({
     serviceTaskCounts,
     isServingRegionally,
     isRepelling,
+    alarmRows,
+    firingAlarmCount,
     taskGraph,
     networkZones,
     auroraTraffic,
@@ -424,6 +474,17 @@ export function useRenderGraph({
             },
           } as SignalEdgeType
         }
+        if (edge.id === ALARMS_TO_SNS_EDGE_ID) {
+          return {
+            ...edge,
+            data: {
+              isActive: firingAlarmCount > 0,
+              isAlerting: firingAlarmCount > 0,
+              variant: 'command',
+              label: firingAlarmCount > 0 ? 'Publish' : 'alarm_actions',
+            },
+          } as SignalEdgeType
+        }
         if (edge.type === 'replication')
           return {
             ...edge,
@@ -461,6 +522,7 @@ export function useRenderGraph({
     desiredCount,
     isScalingCommandLive,
     requestsPerMinutePerTask,
+    firingAlarmCount,
     hoveredBoundaryId,
   ])
 

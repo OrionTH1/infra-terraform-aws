@@ -16,7 +16,12 @@ const VARIANT_STYLE: Record<SignalVariant, VariantStyle> = {
     alertClass: 'stroke-status-warning signal-dash',
   },
   metric: { dashArray: '2 6', strokeWidth: 1.5, activeClass: 'stroke-border-interaction signal-dash' },
-  command: { dashArray: '6 4', strokeWidth: 2, activeClass: 'stroke-border-interaction signal-dash' },
+  command: {
+    dashArray: '6 4',
+    strokeWidth: 2,
+    activeClass: 'stroke-border-interaction signal-dash',
+    alertClass: 'stroke-status-error signal-dash',
+  },
 }
 
 export function SignalEdge({

@@ -1,5 +1,6 @@
 import type { Node } from '@xyflow/react'
 import type { AutoScalingAlarm } from '../simulation/autoscaling-alarm'
+import type { AlarmMetricKey, AlarmState } from '../simulation/observability-alarms'
 import type { TaskFlowNode } from './task-data'
 
 export type NodeStatus = 'idle' | 'healthy' | 'warning' | 'error'
@@ -115,6 +116,26 @@ export interface RegionalServiceNodeData extends InfraNodeData {
   isServing: boolean
 }
 
+export interface AlarmRow {
+  key: AlarmMetricKey
+  name: string
+  condition: string
+  state: AlarmState
+  isModelled: boolean
+}
+
+export interface CloudWatchAlarmsNodeData extends InfraNodeData {
+  rows: AlarmRow[]
+  firingCount: number
+}
+
+export interface SnsTopicNodeData extends InfraNodeData {
+  topicName: string
+  subscription: string
+  firingCount: number
+  isPublishing: boolean
+}
+
 export type ClusterVolumeNodeData = InfraNodeData
 
 export type RdsInstanceRole = 'writer' | 'reader'
@@ -145,6 +166,8 @@ export type NetworkZoneFlowNode = Node<NetworkZoneNodeData, 'networkZone'>
 export type VpcDoorFlowNode = Node<VpcDoorNodeData, 'vpcDoor'>
 export type RegionalServiceFlowNode = Node<RegionalServiceNodeData, 'regionalService'>
 export type ClusterVolumeFlowNode = Node<ClusterVolumeNodeData, 'clusterVolume'>
+export type CloudWatchAlarmsFlowNode = Node<CloudWatchAlarmsNodeData, 'cloudWatchAlarms'>
+export type SnsTopicFlowNode = Node<SnsTopicNodeData, 'snsTopic'>
 export type RdsInstanceFlowNode = Node<RdsInstanceNodeData, 'rdsInstance'>
 
 export type SimulatorFlowNode =
@@ -162,4 +185,6 @@ export type SimulatorFlowNode =
   | VpcDoorFlowNode
   | RegionalServiceFlowNode
   | ClusterVolumeFlowNode
+  | CloudWatchAlarmsFlowNode
+  | SnsTopicFlowNode
   | RdsInstanceFlowNode

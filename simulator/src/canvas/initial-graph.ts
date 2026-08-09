@@ -47,6 +47,9 @@ export const ECR_NODE_ID = 'ecr'
 export const LAYER_STORAGE_NODE_ID = 'layer-storage'
 export const CLOUDWATCH_LOGS_NODE_ID = 'cloudwatch-logs'
 export const SECRETS_MANAGER_NODE_ID = 'secrets-manager'
+export const CLOUDWATCH_ALARMS_NODE_ID = 'cloudwatch-alarms'
+export const SNS_TOPIC_NODE_ID = 'sns-alarm-topic'
+export const ALARMS_TO_SNS_EDGE_ID = 'cloudwatch-alarms-sns-topic'
 export const ENDPOINT_TO_LOGS_EDGE_ID = 'interface-endpoints-cloudwatch-logs'
 export const ENDPOINT_TO_SECRETS_EDGE_ID = 'interface-endpoints-secrets-manager'
 export const SERVICE_TO_ENDPOINT_EDGE_ID = 'ecs-service-interface-endpoints'
@@ -89,6 +92,12 @@ export const RDS_WRITER_POSITION = { x: RDS_INSTANCE_X, y: ALB_POSITION.y - 130 
 export const RDS_READER_POSITION = { x: RDS_INSTANCE_X, y: ALB_POSITION.y + 130 }
 
 const INITIAL_CONTROL_PLANE_Y = ALB_POSITION.y - 330
+
+export const CLOUDWATCH_ALARMS_X = RDS_INSTANCE_X
+export const SNS_TOPIC_GAP = 320
+export const SNS_TOPIC_X = CLOUDWATCH_ALARMS_X + SNS_TOPIC_GAP
+export const FALLBACK_CLOUDWATCH_ALARMS_HEIGHT = 246
+export const FALLBACK_SNS_TOPIC_HEIGHT = 148
 
 export function auroraFrameFor(instanceSize: MeasuredSize): FrameBox {
   return frameAround({
@@ -287,6 +296,12 @@ const CLOUDWATCH_LOGS_TOOLTIP =
 const SECRETS_MANAGER_TOOLTIP =
   'The database password is never written in Terraform or in the task definition. RDS generates and rotates it, and the task definition only names the secret. Before the container starts, the ECS execution role fetches the value through the interface endpoint and injects it as an environment variable — which is why this call belongs to the starting stage and happens exactly once per task.'
 
+const CLOUDWATCH_ALARMS_TOOLTIP =
+  'Nine alarms the observability module declares, evaluated here the way CloudWatch evaluates them: samples are bucketed into periods, each period is collapsed by its own statistic — Minimum for HealthyHostCount, Maximum for UnHealthyHostCount, Sum for the error lines — and the alarm only fires when every one of its evaluation periods breaches. That is why losing all the tasks does not turn this red at once: no_healthy_hosts needs two consecutive minutes. Nothing here is on a request path; CloudWatch pulls each metric from the service that publishes it. The dimmed rows are alarms this simulation has no metric for — CPU, memory, database connections, error log lines — and they stay at INSUFFICIENT_DATA rather than showing an invented number.'
+
+const SNS_TOPIC_TOOLTIP =
+  'Every alarm points its alarm_actions and ok_actions at this one topic, and the EventBridge rules for failed deployments and failed task placement publish to it too. The topic policy is what makes that legal: it grants SNS:Publish to cloudwatch.amazonaws.com and events.amazonaws.com. It is encrypted with the aws/sns managed key. The email subscription is the one piece Terraform cannot finish — AWS sends a confirmation link that a person has to click, so a fresh apply leaves the subscription pending.'
+
 const REGION_TOOLTIP =
   'Everything inside this outline runs in one AWS region. The VPC is yours; the rest are regional services AWS operates for you — the Web ACL the load balancer evaluates, the Application Auto Scaling policy that resizes the service, the registry and bucket the tasks pull images from, and the Aurora storage volume. Traffic between your VPC and any of them stays on the AWS network, which is why the private subnets need no NAT gateway. The person sending requests is the one thing outside.'
 
@@ -416,6 +431,36 @@ export const initialNodes: SimulatorFlowNode[] = [
       minCapacity: AUTOSCALING.minCapacity,
       maxCapacity: AUTOSCALING.maxCapacity,
       desiredCount: AUTOSCALING.minCapacity,
+    },
+    draggable: false,
+    deletable: false,
+  },
+  {
+    id: CLOUDWATCH_ALARMS_NODE_ID,
+    type: 'cloudWatchAlarms',
+    position: { x: CLOUDWATCH_ALARMS_X, y: INITIAL_CONTROL_PLANE_Y },
+    data: {
+      label: 'CloudWatch Alarms',
+      tooltip: CLOUDWATCH_ALARMS_TOOLTIP,
+      status: 'idle',
+      rows: [],
+      firingCount: 0,
+    },
+    draggable: false,
+    deletable: false,
+  },
+  {
+    id: SNS_TOPIC_NODE_ID,
+    type: 'snsTopic',
+    position: { x: SNS_TOPIC_X, y: INITIAL_CONTROL_PLANE_Y },
+    data: {
+      label: 'SNS Topic',
+      tooltip: SNS_TOPIC_TOOLTIP,
+      status: 'idle',
+      topicName: 'ecs-portfolio-dev-alarms',
+      subscription: 'email · confirmed by hand, not by terraform',
+      firingCount: 0,
+      isPublishing: false,
     },
     draggable: false,
     deletable: false,
@@ -714,6 +759,18 @@ export const initialEdges: SimulatorFlowEdge[] = [
     target: ECS_SERVICE_NODE_ID,
     targetHandle: 'desired-count-in',
     data: { isActive: false, variant: 'command', label: 'UpdateService' },
+    deletable: false,
+    reconnectable: false,
+    selectable: false,
+  },
+  {
+    id: ALARMS_TO_SNS_EDGE_ID,
+    type: 'signal',
+    source: CLOUDWATCH_ALARMS_NODE_ID,
+    sourceHandle: 'notify-out',
+    target: SNS_TOPIC_NODE_ID,
+    targetHandle: 'notify-in',
+    data: { isActive: false, variant: 'command', label: 'alarm_actions' },
     deletable: false,
     reconnectable: false,
     selectable: false,

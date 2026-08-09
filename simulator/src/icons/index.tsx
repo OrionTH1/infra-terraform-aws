@@ -1,4 +1,5 @@
 import {
+  BellRing,
   Bomb,
   Boxes,
   ChevronDown,
@@ -9,6 +10,7 @@ import {
   Route,
   Package,
   ScrollText,
+  Siren,
   KeyRound,
   HardDrive,
   Hand,
@@ -86,6 +88,14 @@ export function RegistryIcon({ className }: IconProps) {
 
 export function LogsIcon({ className }: IconProps) {
   return <Glyph icon={ScrollText} size={16} className={className} />
+}
+
+export function AlarmIcon({ className }: IconProps) {
+  return <Glyph icon={Siren} size={16} className={className} />
+}
+
+export function NotifyIcon({ className }: IconProps) {
+  return <Glyph icon={BellRing} size={16} className={className} />
 }
 
 export function SecretIcon({ className }: IconProps) {

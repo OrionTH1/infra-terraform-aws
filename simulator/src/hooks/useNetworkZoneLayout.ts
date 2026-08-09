@@ -18,6 +18,12 @@ import {
   CLOUDWATCH_LOGS_NODE_ID,
   LAYER_STORAGE_NODE_ID,
   SECRETS_MANAGER_NODE_ID,
+  CLOUDWATCH_ALARMS_NODE_ID,
+  CLOUDWATCH_ALARMS_X,
+  SNS_TOPIC_NODE_ID,
+  SNS_TOPIC_X,
+  FALLBACK_CLOUDWATCH_ALARMS_HEIGHT,
+  FALLBACK_SNS_TOPIC_HEIGHT,
   CLUSTER_VOLUME_NODE_ID,
   CLUSTER_VOLUME_POSITION,
   PRIVATE_SUBNETS_NODE_ID,
@@ -46,6 +52,8 @@ export interface NetworkZoneLayout {
   positionsByNodeId: Map<string, XYPosition>
   wafPosition: XYPosition
   autoScalingPosition: XYPosition
+  cloudWatchAlarmsPosition: XYPosition
+  snsTopicPosition: XYPosition
 }
 
 function largestInstance(sizes: Map<string, MeasuredSize>): MeasuredSize {
@@ -75,6 +83,10 @@ export function useNetworkZoneLayout({ serviceFrame }: NetworkZoneLayoutArgs): N
 
     const wafHeight = sizes.get(WAF_NODE_ID)?.height ?? FALLBACK_WAF_HEIGHT
     const autoScalingHeight = sizes.get(AUTO_SCALING_NODE_ID)?.height ?? FALLBACK_AUTO_SCALING_HEIGHT
+    const alarmsHeight = sizes.get(CLOUDWATCH_ALARMS_NODE_ID)?.height ?? FALLBACK_CLOUDWATCH_ALARMS_HEIGHT
+    const snsHeight = sizes.get(SNS_TOPIC_NODE_ID)?.height ?? FALLBACK_SNS_TOPIC_HEIGHT
+    const cloudWatchAlarmsPosition = { x: CLOUDWATCH_ALARMS_X, y: zones.controlPlaneBottom - alarmsHeight }
+    const snsTopicPosition = { x: SNS_TOPIC_X, y: zones.controlPlaneBottom - snsHeight }
     const doors = doorPositions(zones.vpc, serviceFrame)
     const regionalServices = regionalServicePositions(zones.vpc, serviceFrame)
 
@@ -99,6 +111,8 @@ export function useNetworkZoneLayout({ serviceFrame }: NetworkZoneLayoutArgs): N
         boxAt(regionalServices.secrets, SECRETS_MANAGER_NODE_ID),
         boxAt(regionalServices.storage, LAYER_STORAGE_NODE_ID),
         boxAt(CLUSTER_VOLUME_POSITION, CLUSTER_VOLUME_NODE_ID),
+        boxAt(cloudWatchAlarmsPosition, CLOUDWATCH_ALARMS_NODE_ID),
+        boxAt(snsTopicPosition, SNS_TOPIC_NODE_ID),
       ]),
     )
 
@@ -120,6 +134,8 @@ export function useNetworkZoneLayout({ serviceFrame }: NetworkZoneLayoutArgs): N
       ]),
       wafPosition: { x: ALB_POSITION.x, y: zones.controlPlaneBottom - wafHeight },
       autoScalingPosition: { x: TASK_COLUMN_X, y: zones.controlPlaneBottom - autoScalingHeight },
+      cloudWatchAlarmsPosition,
+      snsTopicPosition,
     }
   }, [sizes, serviceFrame])
 }
