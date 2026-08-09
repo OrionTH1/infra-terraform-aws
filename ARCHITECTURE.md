@@ -232,7 +232,7 @@ IF(m1 >= 30, 100 * (FILL(m2,0) + FILL(m3,0)) / m1, 0)
     dev/        # compõe os módulos acima com variáveis do ambiente
   ```
 - Cada módulo com `variables.tf`, `outputs.tf` e `main.tf` (ou split por recurso, se ficar grande).
-- `versions.tf` fixando a versão do Terraform e dos providers (`required_providers`).
+- `versions.tf` fixando a versão do Terraform e dos providers (`required_providers`) — no ambiente, que fixa a versão exata, **e em cada módulo**, com o piso mínimo. Módulo que não declara o que consome só funciona no root onde nasceu, e deixa o Terraform inferir o endereço do provider a partir do nome.
 - Outputs bem definidos nos módulos (ex.: `alb_dns_name`, `ecs_cluster_id`, `rds_endpoint`) para composição limpa no ambiente.
 - Lint de segurança: `checkov` (IaC) e `trivy` (imagem) rodando no CI, com achados documentados ou suprimidos conscientemente (nunca ignorados silenciosamente). O `tfsec`, citado na versão original deste documento, foi descontinuado e absorvido pelo Trivy — não use.
 - `terraform fmt` e `terraform validate` como parte do fluxo de trabalho padrão antes de qualquer `plan`.
