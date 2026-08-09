@@ -105,6 +105,7 @@ export interface VpcDoorNodeData extends Record<string, unknown> {
   label: string
   services: string[]
   footnote: string
+  isCarrying: boolean
 }
 
 export interface RegionalServiceNodeData extends InfraNodeData {

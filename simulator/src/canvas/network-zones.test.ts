@@ -6,6 +6,7 @@ import {
   AURORA_FRAME as REAL_AURORA_FRAME,
   CLUSTER_VOLUME_POSITION,
   DOOR_HEIGHT,
+  DOOR_PAIR_GAP,
   DOOR_WIDTH,
   ENDPOINT_CARD_WIDTH,
   FALLBACK_CARD_HEIGHT,
@@ -107,12 +108,20 @@ describe('the doors in the vpc wall', () => {
     }
   })
 
-  it('centres the gateway on the single service it opens onto', () => {
+  it('keeps the gateway beside the interface door rather than out over its own service', () => {
     const { vpc } = realZones()
     const doors = doorPositions(vpc, SERVICE_FRAME)
     const services = regionalServicePositions(vpc, SERVICE_FRAME)
 
-    expect(doors.gateway.x + DOOR_WIDTH / 2).toBe(services.storage.x + ENDPOINT_CARD_WIDTH / 2)
+    expect(doors.gateway.x).toBe(doors.interface.x + DOOR_PAIR_GAP)
+    expect(doors.gateway.x + DOOR_WIDTH).toBeLessThan(services.storage.x)
+  })
+
+  it('holds the pair together as the endpoint row moves', () => {
+    const shifted: FrameBox = { position: { x: 400, y: 0 }, width: 322, height: 400 }
+    const doors = doorPositions(realZones(shifted).vpc, shifted)
+
+    expect(doors.gateway.x - doors.interface.x).toBe(DOOR_PAIR_GAP)
   })
 
   it('centres the interface door over every service that reaches out through it', () => {

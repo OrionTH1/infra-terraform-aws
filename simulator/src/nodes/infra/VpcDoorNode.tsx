@@ -59,9 +59,9 @@ export function VpcDoorNode({ id, data }: NodeProps<VpcDoorFlowNode>) {
         <span className="door-jamb absolute left-0 top-0 h-full w-px" />
         <span className="door-jamb absolute right-0 top-0 h-full w-px" />
         <span
-          className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 ${
-            data.kind === 'interface' ? 'door-device' : 'door-route'
-          } rounded-full`}
+          className={`door-mark absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full ${
+            data.isCarrying ? 'carrying' : ''
+          }`}
           style={{ width: MARK_WIDTH, height: MARK_HEIGHT }}
         />
       </div>

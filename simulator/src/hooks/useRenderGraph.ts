@@ -13,6 +13,7 @@ import {
   DESIRED_COUNT_EDGE_ID,
   REGION_NODE_ID,
   isEdgeUnderSecurityGroupRule,
+  servicesBehindDoor,
 } from '../canvas/initial-graph'
 import { useSecurityGroupStore } from '../store/useSecurityGroupStore'
 import {
@@ -52,6 +53,7 @@ import type {
   SimulatorFlowNode,
   UserGroupNodeData,
   UserNodeData,
+  VpcDoorNodeData,
   WafNodeData,
 } from '../types/node-data'
 
@@ -172,16 +174,16 @@ export function useRenderGraph({
   const serviceTaskCounts = useMemo(() => countServiceTasks(tasks.map((task) => task.status)), [tasks])
   const isPullingTaskImage = useMemo(() => isPullingImage(tasks.map((task) => task.status)), [tasks])
   const isFetchingAnySecret = useMemo(() => tasks.some((task) => isFetchingSecret(task.status)), [tasks])
-  const hasHealthyTask = routing.healthyTaskCount > 0
+  const isShippingLogs = routing.healthyTaskCount > 0 && routing.totalRequestsAtAlb > 0
 
   const isServingRegionally = useCallback(
     (role: RegionalServiceNodeData['role']) => {
       if (role === 'secrets') return isFetchingAnySecret
-      if (role === 'logs') return hasHealthyTask
+      if (role === 'logs') return isShippingLogs
 
       return isPullingTaskImage
     },
-    [isFetchingAnySecret, hasHealthyTask, isPullingTaskImage],
+    [isFetchingAnySecret, isShippingLogs, isPullingTaskImage],
   )
 
   const isScalingCommandLive = useRecentChange(desiredCount, SCALING_COMMAND_MS)
@@ -262,8 +264,13 @@ export function useRenderGraph({
 
         if (node.type === 'vpcDoor') {
           const position = networkZones.positionsByNodeId.get(node.id)
+          if (position === undefined) return node
 
-          return position === undefined ? node : { ...node, position }
+          const data: VpcDoorNodeData = {
+            ...node.data,
+            isCarrying: servicesBehindDoor(node.data.kind).some(isServingRegionally),
+          }
+          return { ...node, position, data }
         }
 
         if (node.type === 'regionalService') {

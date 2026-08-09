@@ -399,24 +399,54 @@
   transition: background-color var(--motion-state) var(--ease-converge);
 }
 
-.door-device {
-  background-color: var(--color-border-interaction);
-  transition:
-    background-color var(--motion-state) var(--ease-converge),
-    box-shadow var(--motion-state) var(--ease-converge);
-}
-
-.door-route {
+.door-mark {
+  position: relative;
+  overflow: hidden;
   border: 1px solid var(--color-border);
+  background-color: transparent;
   transition:
-    border-color var(--motion-state) var(--ease-converge),
-    box-shadow var(--motion-state) var(--ease-converge);
+    border-color var(--motion-settle) var(--ease-state),
+    background-color var(--motion-settle) var(--ease-state);
 }
 
-.door:hover .door-route,
-.door:focus-visible .door-route {
-  border-color: var(--color-fg-muted);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-fg-muted) 16%, transparent);
+.door-mark.carrying {
+  border-color: color-mix(in srgb, var(--color-border-interaction) 70%, transparent);
+  background-color: color-mix(in srgb, var(--color-border-interaction) 58%, transparent);
+}
+
+@keyframes door-carrying {
+  from {
+    background-position: -40% 0;
+  }
+  to {
+    background-position: 140% 0;
+  }
+}
+
+@keyframes door-carrying-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.door-mark.carrying::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, white 26%, var(--color-border-interaction)) 50%,
+    transparent 100%
+  );
+  background-repeat: no-repeat;
+  background-size: 55% 100%;
+  animation:
+    door-carrying 2600ms var(--ease-state) infinite,
+    door-carrying-in var(--motion-settle) var(--ease-state) both;
 }
 
 .door-label {
@@ -429,26 +459,14 @@
   background-color: var(--color-border-interaction);
 }
 
-.door:hover .door-device,
-.door:focus-visible .door-device {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-border-interaction) 22%, transparent);
-}
-
-.door:hover .door-label,
-.door:focus-visible .door-route {
-  border: 1px solid var(--color-border);
-  transition:
-    border-color var(--motion-state) var(--ease-converge),
-    box-shadow var(--motion-state) var(--ease-converge);
-}
-
-.door:hover .door-route,
-.door:focus-visible .door-route {
+.door:hover .door-mark,
+.door:focus-visible .door-mark {
   border-color: var(--color-fg-muted);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-fg-muted) 16%, transparent);
 }
 
-.door-label {
+.door:hover .door-label,
+.door:focus-visible .door-label {
   color: var(--color-fg);
 }
 

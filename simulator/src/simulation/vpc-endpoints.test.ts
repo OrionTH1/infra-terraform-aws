@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { GATEWAY_ENDPOINT, INTERFACE_ENDPOINTS, VPC_ENDPOINT_GROUPS } from './vpc-endpoints'
 import { isPullingImage } from './image-pull'
+import { servicesBehindDoor } from '../canvas/initial-graph'
 import { AVAILABILITY_ZONES, REGION } from './network-topology'
 import type { TaskStatus } from '../types/task-data'
 
@@ -46,5 +47,18 @@ describe('when the endpoints are carrying traffic', () => {
 
   it('does not treat a task on its way out as an image pull', () => {
     expect(isPullingImage(statuses('draining', 'failed'))).toBe(false)
+  })
+})
+
+describe('which services sit behind each door', () => {
+  it('puts everything the interface endpoints reach on one side and s3 on the other', () => {
+    expect(servicesBehindDoor('interface')).toEqual(['registry', 'logs', 'secrets'])
+    expect(servicesBehindDoor('gateway')).toEqual(['storage'])
+  })
+
+  it('claims no service twice, so a door only lights for traffic that is really its own', () => {
+    const claimed = [...servicesBehindDoor('interface'), ...servicesBehindDoor('gateway')]
+
+    expect(new Set(claimed).size).toBe(claimed.length)
   })
 })

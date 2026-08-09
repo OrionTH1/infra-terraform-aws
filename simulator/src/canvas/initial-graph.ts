@@ -19,7 +19,7 @@ import type { XYPosition } from '@xyflow/react'
 import type { ContentBox, FrameBox } from './frame-metrics'
 import type { MeasuredSize } from '../hooks/useMeasuredNodeSizes'
 import type { ResourceId } from '../simulation/boot-graph'
-import type { SimulatorFlowNode } from '../types/node-data'
+import type { SimulatorFlowNode, VpcDoorNodeData } from '../types/node-data'
 import type { SimulatorFlowEdge } from '../types/edge-data'
 
 export const ALB_NODE_ID = 'alb'
@@ -109,6 +109,7 @@ export const LOGS_EGRESS_LANE = 64
 export const ENDPOINT_COLUMN_GAP = 24
 export const DOOR_WIDTH = 48
 export const DOOR_HEIGHT = 9
+export const DOOR_PAIR_GAP = 180
 
 const VPC_BORDER_BEYOND_AURORA_FRAME = FRAME_PADDING * 2
 const MANAGED_STORAGE_GAP = 150
@@ -212,6 +213,12 @@ const INITIAL_SERVICE_FRAME = {
 export type RegionalServiceKey = 'registry' | 'logs' | 'secrets' | 'storage'
 
 const INTERFACE_SERVED: RegionalServiceKey[] = ['registry', 'logs', 'secrets']
+const GATEWAY_SERVED: RegionalServiceKey[] = ['storage']
+
+export function servicesBehindDoor(kind: VpcDoorNodeData['kind']): RegionalServiceKey[] {
+  return kind === 'interface' ? INTERFACE_SERVED : GATEWAY_SERVED
+}
+
 const REGIONAL_SERVICE_ORDER: RegionalServiceKey[] = ['registry', 'logs', 'secrets', 'storage']
 
 export function endpointColumns(serviceFrame: FrameBox): Record<RegionalServiceKey, number> {
@@ -235,10 +242,11 @@ export function doorPositions(
 ): { interface: XYPosition; gateway: XYPosition } {
   const columns = endpointColumns(serviceFrame)
   const y = vpcFrame.position.y + vpcFrame.height - DOOR_HEIGHT / 2
+  const interfaceX = doorOver(INTERFACE_SERVED.map((key) => columns[key]))
 
   return {
-    interface: { x: doorOver(INTERFACE_SERVED.map((key) => columns[key])), y },
-    gateway: { x: doorOver([columns.storage]), y },
+    interface: { x: interfaceX, y },
+    gateway: { x: interfaceX + DOOR_PAIR_GAP, y },
   }
 }
 
@@ -458,6 +466,7 @@ export const initialNodes: SimulatorFlowNode[] = [
       label: 'Interface',
       services: INTERFACE_ENDPOINTS.services,
       footnote: INTERFACE_ENDPOINTS.footnote,
+      isCarrying: false,
     },
     draggable: false,
     deletable: false,
@@ -472,6 +481,7 @@ export const initialNodes: SimulatorFlowNode[] = [
       label: 'Gateway',
       services: GATEWAY_ENDPOINT.services,
       footnote: GATEWAY_ENDPOINT.footnote,
+      isCarrying: false,
     },
     draggable: false,
     deletable: false,
