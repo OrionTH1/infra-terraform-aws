@@ -28,6 +28,7 @@ resource "aws_lb_target_group" "app" {
   target_type = "ip"
 
   load_balancing_algorithm_type = "least_outstanding_requests"
+  deregistration_delay          = var.deregistration_delay_seconds
 
   health_check {
     path                = "/api/v1/health"

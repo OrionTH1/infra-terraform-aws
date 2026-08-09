@@ -28,6 +28,12 @@ variable "app_port" {
   description = "Port the application container listens on. The target group forwards traffic to this port."
 }
 
+variable "deregistration_delay_seconds" {
+  type        = number
+  description = "How long a target stays in draining, finishing in-flight requests, before the load balancer lets go of it. Size it by the longest request the application serves: the AWS default of 300 makes every scale-in and every deployment wave drag five minutes per task, all of it billed."
+  default     = 30
+}
+
 variable "enable_deletion_protection" {
   type        = bool
   description = "Whether to block deletion of the load balancer."
