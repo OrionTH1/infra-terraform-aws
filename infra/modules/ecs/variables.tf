@@ -30,6 +30,12 @@ variable "enable_deployment_circuit_breaker" {
   default     = true
 }
 
+variable "health_check_grace_period_seconds" {
+  type        = number
+  description = "How long the scheduler ignores the load balancer health check on a task that just started. Without it the only margin a task gets is unhealthy_threshold x interval, and a task that takes longer than that to warm up is stopped before it can ever pass, which repeats on every replacement."
+  default     = 120
+}
+
 variable "log_retention_days" {
   type        = number
   description = "Number of days to retain the ECS task's CloudWatch logs."
