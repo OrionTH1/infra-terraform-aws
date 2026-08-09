@@ -72,7 +72,7 @@ export interface RenderGraph {
   renderEdges: SimulatorFlowEdge[]
   liveEdgeIds: Set<string>
   deliveredRequests: number
-  hasNoHealthyTargets: boolean
+  hasNoReachableTargets: boolean
   rdsReads: number
   rdsWrites: number
 }
@@ -196,7 +196,8 @@ export function useRenderGraph({
     routing.healthyTaskCount > 0 ? Math.round(routing.totalRequestsAtAlb / routing.healthyTaskCount) : null
 
   const hasNoHealthyTargets = routing.healthyTaskCount === 0
-  const deliveredRequests = hasNoHealthyTargets ? 0 : routing.totalRequestsAtAlb
+  const hasNoReachableTargets = routing.servingTaskCount === 0
+  const deliveredRequests = hasNoReachableTargets ? 0 : routing.totalRequestsAtAlb
 
   const { reads: rdsReads, writes: rdsWrites } = useMemo(
     () => splitReadWrite(deliveredRequests, RDS_READ_FRACTION),
@@ -465,5 +466,5 @@ export function useRenderGraph({
 
   const liveEdgeIds = useMemo(() => new Set(renderEdges.map((edge) => edge.id)), [renderEdges])
 
-  return { renderNodes, renderEdges, liveEdgeIds, deliveredRequests, hasNoHealthyTargets, rdsReads, rdsWrites }
+  return { renderNodes, renderEdges, liveEdgeIds, deliveredRequests, hasNoReachableTargets, rdsReads, rdsWrites }
 }

@@ -22,9 +22,9 @@ export interface UserTrafficSplit {
 export function splitAtTheDoor(
   requestsPerMinute: number,
   deliveredPerMinute: number,
-  hasNoHealthyTargets: boolean,
+  hasNoReachableTargets: boolean,
 ): UserTrafficSplit {
-  const delivered = hasNoHealthyTargets ? 0 : Math.min(deliveredPerMinute, requestsPerMinute)
+  const delivered = hasNoReachableTargets ? 0 : Math.min(deliveredPerMinute, requestsPerMinute)
 
   return { delivered, turnedAway: Math.max(0, requestsPerMinute - delivered) }
 }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { ALB_NODE_ID } from '../canvas/initial-graph'
 import { distributeRoundRobin } from '../simulation/traffic-distribution'
+import { targetsForRequests } from '../simulation/target-group'
 import { toTrafficSource, type TrafficSourceNode } from '../simulation/traffic-source'
 import { useSimulationStore, type SourceRate, type TaskRuntime } from '../store/useSimulationStore'
 import type { SimulatorFlowEdge } from '../types/edge-data'
@@ -21,6 +22,8 @@ export interface TrafficRouting {
   totalRequestsSent: number
   totalRequestsAtAlb: number
   healthyTaskCount: number
+  servingTaskCount: number
+  isFailingOpen: boolean
 }
 
 export function useTrafficRouting({ nodes, edges, tasks }: TrafficRoutingArgs): TrafficRouting {
@@ -100,11 +103,13 @@ export function useTrafficRouting({ nodes, edges, tasks }: TrafficRoutingArgs): 
     [sourceRates, blockedIpSet],
   )
 
-  const healthyTaskIds = useMemo(() => tasks.filter((task) => task.status === 'healthy').map((task) => task.id), [tasks])
+  const healthyTaskCount = useMemo(() => tasks.filter((task) => task.status === 'healthy').length, [tasks])
+
+  const serving = useMemo(() => targetsForRequests(tasks), [tasks])
 
   const requestsByTaskId = useMemo(
-    () => distributeRoundRobin(totalRequestsAtAlb, healthyTaskIds),
-    [totalRequestsAtAlb, healthyTaskIds],
+    () => distributeRoundRobin(totalRequestsAtAlb, serving.targets.map((task) => task.id)),
+    [totalRequestsAtAlb, serving],
   )
 
   return {
@@ -115,6 +120,8 @@ export function useTrafficRouting({ nodes, edges, tasks }: TrafficRoutingArgs): 
     blockedIpCountByUserId,
     totalRequestsSent,
     totalRequestsAtAlb,
-    healthyTaskCount: healthyTaskIds.length,
+    healthyTaskCount,
+    servingTaskCount: serving.targets.length,
+    isFailingOpen: serving.isFailingOpen,
   }
 }

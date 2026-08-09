@@ -26,7 +26,7 @@ import { TASK_LIFECYCLE } from '../simulation/simulation-config'
 import { useSimulationStore } from '../store/useSimulationStore'
 
 const IMAGE_PULL_DURATION_MS = TASK_LIFECYCLE.provisioningMs
-import { isRegisteredTarget } from '../simulation/target-group'
+import { isRegisteredTarget, targetsForRequests } from '../simulation/target-group'
 import { useLeavingTasks } from './useLeavingTasks'
 import { useTaskColumnLayout } from './useTaskColumnLayout'
 import type { TaskRuntime } from '../store/useSimulationStore'
@@ -56,6 +56,7 @@ export interface TaskRoute {
   junctionEdgeId: string | null
   readLeg: DatabaseLeg | null
   writeLeg: DatabaseLeg | null
+  answersWithError: boolean
 }
 
 export interface TaskGraph {
@@ -63,7 +64,7 @@ export interface TaskGraph {
   targetGroupNode: TargetGroupFlowNode | null
   serviceFrame: FrameBox
   taskEdges: RequestFlowEdge[]
-  healthyTaskRoutes: TaskRoute[]
+  requestRoutes: TaskRoute[]
   imagePullRoutes: ImagePullLegs[]
   logShipments: LogShipmentLegs[]
   secretFetches: SecretFetchLegs[]
@@ -214,19 +215,18 @@ export function useTaskGraph({
     return edges
   }, [orderedTasks, requestsByTaskId, isDatabaseReachable])
 
-  const healthyTaskRoutes = useMemo(
-    (): TaskRoute[] =>
-      tasks
-        .filter((task) => task.status === 'healthy')
-        .map((task) => ({
-          readCacheHitRatio,
-          albEdgeId: albToTaskEdgeId(task.id),
-          junctionEdgeId: isDatabaseReachable ? taskToJunctionEdgeId(task.id) : null,
-          readLeg,
-          writeLeg,
-        })),
-    [tasks, isDatabaseReachable, readLeg, writeLeg, readCacheHitRatio],
-  )
+  const requestRoutes = useMemo((): TaskRoute[] => {
+    const { targets, isFailingOpen } = targetsForRequests(tasks)
+
+    return targets.map((task) => ({
+      readCacheHitRatio,
+      albEdgeId: albToTaskEdgeId(task.id),
+      junctionEdgeId: isFailingOpen || !isDatabaseReachable ? null : taskToJunctionEdgeId(task.id),
+      readLeg,
+      writeLeg,
+      answersWithError: isFailingOpen,
+    }))
+  }, [tasks, isDatabaseReachable, readLeg, writeLeg, readCacheHitRatio])
 
   const imagePullRoutes = useMemo(
     (): ImagePullLegs[] =>
@@ -273,7 +273,7 @@ export function useTaskGraph({
     targetGroupNode,
     serviceFrame,
     taskEdges,
-    healthyTaskRoutes,
+    requestRoutes,
     imagePullRoutes,
     logShipments,
     secretFetches,

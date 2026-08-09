@@ -408,6 +408,7 @@ export function usePacketFlow({
                 queries,
                 liveEdgeIds: inputs.current.liveEdgeIds,
                 readServedFromCache,
+                answersWithError: taskRoute.answersWithError,
               })
             },
             carried,

@@ -17,6 +17,7 @@ export interface ItineraryRequest {
   queries: QueryKind[]
   liveEdgeIds: Set<string>
   readServedFromCache: boolean
+  answersWithError: boolean
 }
 
 const WRITES_EVERY = Math.round(1 / (1 - RDS_READ_FRACTION))
@@ -36,6 +37,10 @@ export function buildRequestItinerary(request: ItineraryRequest): ItineraryLeg[]
 
   const inbound = [leg(entryEdgeId, false), leg(albEdgeId, false)]
   const outbound = [leg(albEdgeId, true), leg(entryEdgeId, true)]
+
+  if (request.answersWithError) {
+    return [...inbound, ...outbound.map((entry) => ({ ...entry, color: 'rejected' as const }))]
+  }
 
   if (junctionEdgeId === null) return [...inbound, ...outbound]
 

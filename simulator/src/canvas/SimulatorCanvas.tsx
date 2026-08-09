@@ -107,7 +107,7 @@ export function SimulatorCanvas() {
   const networkZones = useNetworkZoneLayout({ serviceFrame: taskGraph.serviceFrame })
   const { onNodesChangeOutsideTheRegion, isRepelling } = useRegionWall({ nodes, networkZones, onNodesChange })
 
-  const { renderNodes, renderEdges, liveEdgeIds, hasNoHealthyTargets } = useRenderGraph({
+  const { renderNodes, renderEdges, liveEdgeIds, hasNoReachableTargets } = useRenderGraph({
     nodes,
     edges,
     routing,
@@ -139,9 +139,9 @@ export function SimulatorCanvas() {
       splitAtTheDoor(
         routing.requestsByUserId.get(sourceId) ?? 0,
         routing.deliveredByUserId.get(sourceId) ?? 0,
-        hasNoHealthyTargets,
+        hasNoReachableTargets,
       ),
-    [routing.requestsByUserId, routing.deliveredByUserId, hasNoHealthyTargets],
+    [routing.requestsByUserId, routing.deliveredByUserId, hasNoReachableTargets],
   )
 
   const packetEntries = useMemo(
@@ -186,7 +186,7 @@ export function SimulatorCanvas() {
         <Controls position={isCompact ? 'top-left' : 'bottom-left'} showInteractive={false} />
         <PacketLayer
           entries={packetEntries}
-          taskRoutes={taskGraph.healthyTaskRoutes}
+          taskRoutes={taskGraph.requestRoutes}
           imagePullRoutes={taskGraph.imagePullRoutes}
           logShipments={taskGraph.logShipments}
           secretFetches={taskGraph.secretFetches}

@@ -28,6 +28,7 @@ function itinerary(queries: QueryKind[], liveEdgeIds = EVERYTHING_UP, readServed
     writeLegs: { instanceEdgeId: WRITER, volumeEdgeId: WRITER_VOLUME },
     queries,
     liveEdgeIds,
+    answersWithError: false,
   })
 }
 
@@ -125,6 +126,35 @@ describe('a read the reader can answer from memory', () => {
   })
 })
 
+describe('when the load balancer falls open onto an unhealthy target', () => {
+  const failOpen = buildRequestItinerary({
+    readServedFromCache: false,
+    entryEdgeId: ENTRY,
+    albEdgeId: ALB,
+    junctionEdgeId: JUNCTION,
+    readLegs: { instanceEdgeId: READER, volumeEdgeId: READER_VOLUME },
+    writeLegs: { instanceEdgeId: WRITER, volumeEdgeId: WRITER_VOLUME },
+    queries: ['read'],
+    liveEdgeIds: EVERYTHING_UP,
+    answersWithError: true,
+  })
+
+  it('still carries the request all the way to the task, because the request really arrives', () => {
+    expect(failOpen.slice(0, 2).map((leg) => leg.edgeId)).toEqual([ENTRY, ALB])
+  })
+
+  it('never reaches the database, since the target is not serving yet', () => {
+    expect(failOpen.map((leg) => leg.edgeId)).not.toContain(JUNCTION)
+  })
+
+  it('answers with an error rather than being turned away at the door', () => {
+    const homeward = failOpen.filter((leg) => leg.reversed)
+
+    expect(homeward).toHaveLength(2)
+    expect(homeward.every((leg) => leg.color === 'rejected')).toBe(true)
+  })
+})
+
 describe('when the database cannot be reached', () => {
   it('turns the request around at the task instead of stranding it', () => {
     const legs = buildRequestItinerary({
@@ -136,6 +166,7 @@ describe('when the database cannot be reached', () => {
       writeLegs: null,
       queries: ['read'],
       liveEdgeIds: EVERYTHING_UP,
+      answersWithError: false,
     })
 
     expect(legs.map((leg) => leg.edgeId)).toEqual([ENTRY, ALB, ALB, ENTRY])
