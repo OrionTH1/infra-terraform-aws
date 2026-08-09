@@ -50,6 +50,12 @@ export const SECURITY_GROUP_BOUNDARIES: Record<string, SecurityGroupBoundary> = 
       { direction: 'egress', securityGroup: 'ecs_sg', protocol: 'tcp', port: HTTPS_PORT, peer: S3_PREFIX_LIST },
     ],
   },
+  [boundaryKey('ecsService', 'logs-out')]: {
+    pairId: null,
+    rules: [
+      { direction: 'egress', securityGroup: 'ecs_sg', protocol: 'tcp', port: HTTPS_PORT, peer: 'vpc_endpoints_sg' },
+    ],
+  },
   [boundaryKey('rdsInstance', 'in')]: {
     pairId: ECS_TO_RDS_PAIR,
     rules: [{ direction: 'ingress', securityGroup: 'rds_sg', protocol: 'tcp', port: POSTGRES_PORT, peer: 'ecs_sg' }],

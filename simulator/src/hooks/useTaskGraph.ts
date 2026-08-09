@@ -12,10 +12,8 @@ import {
   ENDPOINT_TO_LOGS_EDGE_ID,
   ENDPOINT_TO_SECRETS_EDGE_ID,
   ENDPOINT_TO_STORAGE_EDGE_ID,
-  LOGS_JUNCTION_NODE_ID,
-  LOGS_JUNCTION_TO_ENDPOINT_EDGE_ID,
+  SERVICE_TO_ENDPOINT_EDGE_ID,
   SECRETS_MANAGER_NODE_ID,
-  taskToLogsEdgeId,
   taskToSecretsEdgeId,
   albToTaskEdgeId,
   taskToJunctionEdgeId,
@@ -163,7 +161,7 @@ export function useTaskGraph({
           id: taskToRegistryEdgeId(task.id),
           type: 'requestFlow',
           source: task.id,
-          sourceHandle: 'pull',
+          sourceHandle: 'out',
           target: INTERFACE_ENDPOINTS_NODE_ID,
           targetHandle: 'in',
           data: { requestsPerMinute: 0 },
@@ -175,7 +173,7 @@ export function useTaskGraph({
           id: taskToStorageEdgeId(task.id),
           type: 'requestFlow',
           source: task.id,
-          sourceHandle: 'pull',
+          sourceHandle: 'out',
           target: GATEWAY_ENDPOINT_NODE_ID,
           targetHandle: 'in',
           data: { requestsPerMinute: 0 },
@@ -189,22 +187,8 @@ export function useTaskGraph({
           id: taskToSecretsEdgeId(task.id),
           type: 'requestFlow',
           source: task.id,
-          sourceHandle: 'pull',
+          sourceHandle: 'out',
           target: SECRETS_MANAGER_NODE_ID,
-          targetHandle: 'in',
-          data: { requestsPerMinute: 0 },
-          deletable: false,
-          reconnectable: false,
-        })
-      }
-
-      if (task.status === 'healthy') {
-        edges.push({
-          id: taskToLogsEdgeId(task.id),
-          type: 'requestFlow',
-          source: task.id,
-          sourceHandle: 'pull',
-          target: LOGS_JUNCTION_NODE_ID,
           targetHandle: 'in',
           data: { requestsPerMinute: 0 },
           deletable: false,
@@ -266,8 +250,7 @@ export function useTaskGraph({
         .filter((task) => task.status === 'healthy')
         .map((task) => ({
           taskId: task.id,
-          junctionEdgeId: taskToLogsEdgeId(task.id),
-          endpointEdgeId: LOGS_JUNCTION_TO_ENDPOINT_EDGE_ID,
+          endpointEdgeId: SERVICE_TO_ENDPOINT_EDGE_ID,
           serviceEdgeId: ENDPOINT_TO_LOGS_EDGE_ID,
         })),
     [orderedTasks],

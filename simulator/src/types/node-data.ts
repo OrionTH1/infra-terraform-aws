@@ -95,6 +95,11 @@ export interface NetworkZoneNodeData extends InfraNodeData {
   isRepelling?: boolean
 }
 
+export interface JunctionNodeData extends Record<string, unknown> {
+  hint: string
+  axis: 'horizontal' | 'vertical'
+}
+
 export interface VpcDoorNodeData extends Record<string, unknown> {
   kind: 'interface' | 'gateway'
   label: string
@@ -133,7 +138,7 @@ export type UserFlowNode = Node<UserNodeData, 'user'>
 export type UserGroupFlowNode = Node<UserGroupNodeData, 'userGroup'>
 export type WafFlowNode = Node<WafNodeData, 'waf'>
 export type TargetGroupFlowNode = Node<TargetGroupNodeData, 'targetGroup'>
-export type DbJunctionFlowNode = Node<Record<string, unknown>, 'dbJunction'>
+export type JunctionFlowNode = Node<JunctionNodeData, 'dbJunction'>
 export type AuroraClusterFlowNode = Node<AuroraClusterNodeData, 'auroraCluster'>
 export type NetworkZoneFlowNode = Node<NetworkZoneNodeData, 'networkZone'>
 export type VpcDoorFlowNode = Node<VpcDoorNodeData, 'vpcDoor'>
@@ -149,7 +154,7 @@ export type SimulatorFlowNode =
   | UserGroupFlowNode
   | WafFlowNode
   | TargetGroupFlowNode
-  | DbJunctionFlowNode
+  | JunctionFlowNode
   | TaskFlowNode
   | AuroraClusterFlowNode
   | NetworkZoneFlowNode

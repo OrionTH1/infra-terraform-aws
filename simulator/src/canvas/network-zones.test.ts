@@ -10,6 +10,7 @@ import {
   ENDPOINT_CARD_WIDTH,
   FALLBACK_CARD_HEIGHT,
   FALLBACK_CARD_WIDTH,
+  LOGS_EGRESS_LANE,
   RDS_READER_POSITION,
   RDS_WRITER_POSITION,
   auroraFrameFor,
@@ -141,6 +142,24 @@ describe('the doors in the vpc wall', () => {
     expect(doorPositions(realZones(taller).vpc, taller).interface.y).toBeGreaterThan(
       doorPositions(realZones().vpc, SERVICE_FRAME).interface.y,
     )
+  })
+})
+
+describe('the lane the log stream leaves by', () => {
+  const TALLER_THAN_AURORA: FrameBox = { position: { x: 876, y: -200 }, width: 322, height: 800 }
+
+  it('always leaves room below the task column, whichever side of the tier is taller', () => {
+    for (const serviceFrame of [SERVICE_FRAME, TALLER_THAN_AURORA]) {
+      const tier = frameContentBox(realZones(serviceFrame).privateSubnets)
+
+      expect(tier.bottom - frameContentBox(serviceFrame).bottom).toBeGreaterThan(LOGS_EGRESS_LANE)
+    }
+  })
+
+  it('gives the line somewhere to curve instead of dropping straight onto the wall', () => {
+    const door = doorPositions(realZones(TALLER_THAN_AURORA).vpc, TALLER_THAN_AURORA).interface
+
+    expect(door.y - frameContentBox(TALLER_THAN_AURORA).bottom).toBeGreaterThan(LOGS_EGRESS_LANE)
   })
 })
 

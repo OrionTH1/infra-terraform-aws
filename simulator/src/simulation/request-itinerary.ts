@@ -59,6 +59,21 @@ export function buildRequestItinerary(request: ItineraryRequest): ItineraryLeg[]
 }
 
 
+export function abandonDatabaseTrip(
+  legs: ItineraryLeg[],
+  fromLegIndex: number,
+  liveEdgeIds: Set<string>,
+): ItineraryLeg[] | null {
+  const homeward = legs
+    .slice(fromLegIndex)
+    .filter((leg) => leg.reversed && liveEdgeIds.has(leg.edgeId))
+    .map((leg) => ({ ...leg, color: 'rejected' as const }))
+
+  if (homeward.length === 0) return null
+
+  return [...legs.slice(0, fromLegIndex), ...homeward]
+}
+
 export function divertToWriter(
   legs: ItineraryLeg[],
   fromLegIndex: number,

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { buildLogShipment, buildSecretFetch, hasEgressToEndpoints, isFetchingSecret } from './task-egress'
+import { buildLogShipment, buildSecretFetch, isFetchingSecret } from './task-egress'
+import { securityGroupBoundary } from './security-groups'
 import { TASK_STATUS_MESSAGE } from '../types/task-data'
 
-const TASK_TO_JUNCTION = 'task-1-logs-junction'
-const JUNCTION_TO_ENDPOINT = 'logs-junction-interface-endpoints'
+const SERVICE_TO_ENDPOINT = 'ecs-service-interface-endpoints'
 const ENDPOINT_TO_LOGS = 'interface-endpoints-cloudwatch-logs'
 
 const TASK_TO_ENDPOINT = 'task-1-secrets-manager'
@@ -11,8 +11,7 @@ const ENDPOINT_TO_SECRETS = 'interface-endpoints-secrets-manager'
 
 const LOG_LEGS = {
   taskId: 'task-1',
-  junctionEdgeId: TASK_TO_JUNCTION,
-  endpointEdgeId: JUNCTION_TO_ENDPOINT,
+  endpointEdgeId: SERVICE_TO_ENDPOINT,
   serviceEdgeId: ENDPOINT_TO_LOGS,
 }
 
@@ -22,30 +21,23 @@ const SECRET_LEGS = {
   serviceEdgeId: ENDPOINT_TO_SECRETS,
 }
 
-const LOGS_UP = new Set([TASK_TO_JUNCTION, JUNCTION_TO_ENDPOINT, ENDPOINT_TO_LOGS])
+const LOGS_UP = new Set([SERVICE_TO_ENDPOINT, ENDPOINT_TO_LOGS])
 const SECRETS_UP = new Set([TASK_TO_ENDPOINT, ENDPOINT_TO_SECRETS])
 
 describe('shipping a log line', () => {
-  it('carries the id of the task that wrote it, so the line can be traced to its request', () => {
+  it('still names the task whose request produced it, so the line keeps its cause', () => {
     expect(LOG_LEGS.taskId).toBe('task-1')
-    expect(LOG_LEGS.junctionEdgeId).toContain(LOG_LEGS.taskId)
   })
 
-  it('leaves the task and never comes back, because nothing is waiting on it', () => {
+  it('leaves on the one line the whole service shares, rather than a line per task', () => {
     const legs = buildLogShipment(LOG_LEGS, LOGS_UP)
 
-    expect(legs.map((leg) => leg.edgeId)).toEqual([TASK_TO_JUNCTION, JUNCTION_TO_ENDPOINT, ENDPOINT_TO_LOGS])
+    expect(legs.map((leg) => leg.edgeId)).toEqual([SERVICE_TO_ENDPOINT, ENDPOINT_TO_LOGS])
     expect(legs.every((leg) => !leg.reversed)).toBe(true)
   })
 
-  it('does not treat the junction as a place the line stops', () => {
-    const [toJunction] = buildLogShipment(LOG_LEGS, LOGS_UP)
-
-    expect(toJunction.entersNodeAtEnd).toBe(false)
-  })
-
   it('drops the legs whose edge is gone', () => {
-    expect(buildLogShipment(LOG_LEGS, new Set([TASK_TO_JUNCTION]))).toHaveLength(1)
+    expect(buildLogShipment(LOG_LEGS, new Set([SERVICE_TO_ENDPOINT]))).toHaveLength(1)
   })
 })
 
@@ -66,17 +58,12 @@ describe('fetching the database password', () => {
   })
 })
 
-describe('which tasks keep a way out to the endpoints', () => {
-  it('keeps the door open while the task pulls, starts and serves', () => {
-    expect(hasEgressToEndpoints('provisioning')).toBe(true)
-    expect(hasEgressToEndpoints('starting')).toBe(true)
-    expect(hasEgressToEndpoints('healthy')).toBe(true)
-  })
+describe('which security group rule every one of these calls leaves under', () => {
+  it('is the same egress side of ecs_sg that the database traffic already leaves by', () => {
+    const rules = securityGroupBoundary('task', 'out')?.rules ?? []
 
-  it('closes it once the task has nothing left to send', () => {
-    expect(hasEgressToEndpoints('registering')).toBe(false)
-    expect(hasEgressToEndpoints('draining')).toBe(false)
-    expect(hasEgressToEndpoints('failed')).toBe(false)
+    expect(rules.every((rule) => rule.direction === 'egress')).toBe(true)
+    expect(rules.map((rule) => rule.peer)).toContain('vpc_endpoints_sg')
   })
 })
 

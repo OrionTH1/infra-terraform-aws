@@ -14,7 +14,7 @@ const MAX_PACKETS_PER_SECOND = 2
 const REQUESTS_PER_SECOND_PER_PACKET = 6
 const SECONDS_PER_MINUTE = 60
 
-export type PacketColor = 'default' | 'write' | 'blocked'
+export type PacketColor = 'default' | 'write' | 'blocked' | 'rejected'
 
 export interface ItineraryLeg {
   edgeId: string

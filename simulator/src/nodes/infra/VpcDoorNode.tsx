@@ -25,8 +25,15 @@ export function VpcDoorNode({ id, data }: NodeProps<VpcDoorFlowNode>) {
     lines: [...data.services, data.footnote],
     side: 'right' as const,
   }
-  const open = (event: { currentTarget: HTMLElement }) =>
-    hoverBoundary(id, id, null, anchorOf(event.currentTarget), content)
+  const hovered = (element: HTMLElement) => ({
+    key: id,
+    nodeId: id,
+    boundaryId: null,
+    pairId: null,
+    anchor: anchorOf(element),
+    content,
+  })
+  const open = (event: { currentTarget: HTMLElement }) => hoverBoundary(hovered(event.currentTarget))
 
   return (
     <div
@@ -40,7 +47,7 @@ export function VpcDoorNode({ id, data }: NodeProps<VpcDoorFlowNode>) {
       onMouseLeave={() => clearBoundary(id)}
       onFocus={open}
       onBlur={() => clearBoundary(id)}
-      onClick={(event) => toggleBoundary(id, id, null, anchorOf(event.currentTarget), content)}
+      onClick={(event) => toggleBoundary(hovered(event.currentTarget))}
     >
       <Handle type="target" position={Position.Top} id="in" isConnectable={false} />
 

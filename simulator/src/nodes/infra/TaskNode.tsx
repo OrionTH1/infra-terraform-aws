@@ -1,4 +1,4 @@
-import { Handle, Position, type NodeProps } from '@xyflow/react'
+import { Position, type NodeProps } from '@xyflow/react'
 import { STAGE_DURATION_MS } from '../../simulation/simulation-config'
 import { TaskBlastEffect } from './TaskBlastEffect'
 import { useTaskBlast } from '../../hooks/useTaskBlast'
@@ -11,7 +11,6 @@ import { RateReadout } from '../shared/RateReadout'
 import { SecurityGroupHandle } from '../shared/SecurityGroupHandle'
 import { StageProgress, type StageTone } from '../shared/StageProgress'
 import { TaskIcon } from '../../icons'
-import { hasEgressToEndpoints } from '../../simulation/task-egress'
 
 const STATUS_LABEL: Record<TaskStatus, string> = {
   provisioning: 'Provisioning',
@@ -72,9 +71,6 @@ export function TaskNode({ id, data }: NodeProps<TaskFlowNode>) {
         <>
           <SecurityGroupHandle nodeType="task" type="target" position={Position.Left} id="in" isConnectable={false} />
           <SecurityGroupHandle nodeType="task" type="source" position={Position.Right} id="out" isConnectable={false} />
-          {hasEgressToEndpoints(data.status) ? (
-            <Handle type="source" position={Position.Bottom} id="pull" isConnectable={false} />
-          ) : null}
         </>
       }
     >

@@ -86,23 +86,35 @@ ALB → ECS Service (N tasks) → (Aurora, opcional/decorativo). Posição arras
 Site estático em Vercel ou GitHub Pages, sem custo. Pode viver neste mesmo monorepo (ex.: `simulator/`) ou em repo próprio linkado no README principal — decisão de organização, não bloqueia o design acima.
 
 ## Falta
-- [ ] Um bug quando deleta o writer instance, todas as requests são apagadas — **não verificado desde então**. O fallback de leitura para o writer foi implementado, mas o caso inverso (writer morto, leituras seguindo pelo reader) nunca foi testado de novo.
 - [ ] Simular o S3 da aplicação — uma rota do backend lendo ou gravando num bucket próprio. Diferente do S3 que já existe no desenho, que é onde o ECR guarda as camadas de imagem.
 
 ## Resolvido
 - [x] Representações visuais de response de volta — toda request faz o circuito completo até o usuário, com anel verde na volta e faixas deslocadas para ida e volta não se sobreporem.
 - [x] Performance no zoom do ECS Cluster — a causa era `transition: transform` nos quatro tipos de node do cluster, que promovia camadas de composição a cada frame. De 25,8 fps para 77 fps em produção.
 - [x] S3 no caminho do image pull — com round trip completo, portas de VPC endpoint e o ECR devolvendo URL pré-assinada em vez de bytes.
+- [x] Destino de `logs` e `secretsmanager` — CloudWatch Logs e Secrets Manager têm node, aresta e ativação condicional. As quatro portas do interface endpoint entregam quatro caminhos.
+- [x] **O bug do writer deletado.** Confirmado e corrigido. A causa não era o roteamento, que já estava certo: era `usePacketFlow`, na reação a uma aresta que some. Quando a rota de um pacote quebrava, a única saída prevista era desviar para o writer — e o guard `if (writeLegs === null) continue` apagava o pacote quando era justamente o writer que tinha morrido. Matar o writer derruba as duas instâncias durante a janela de failover (`promoting` + `provisioning`), o que tira as arestas do banco do grafo de uma vez e faz *toda* request em voo cair nesse `continue`. O caso do reader nunca apareceu porque ali havia writer para onde desviar.
+
+  A correção é `abandonDatabaseTrip`: em vez de sumir, o pacote desiste do que está à frente, mantém as pernas que já percorreu e volta pelo caminho que ainda existe, marcado com a cor `rejected`. É o que um 5xx é — a request entrou, o app não alcançou o banco, a resposta volta. Apagar o pacote no meio do voo afirmava que a request nunca existiu.
 
 ## Decidido não fazer
+- **Ejetar target que ficou não saudável (adiado, não rejeitado).** O `aws_lb_target_group` tem `unhealthy_threshold = 3` e o simulador só modela o `healthy_threshold`. Estava listado como lacuna, mas não é: `unhealthy_threshold` não aparece em lugar nenhum da tela — o único tooltip que fala de health check (`useTaskColumnLayout.ts`) descreve só a direção saudável. Não há promessa quebrada, há feature ausente, e o caminho `failed` do blast já entrega a lição inteira (task morre, ECS repõe, cold start de 80s, latência sobe no intervalo) e é fiel: container essencial sai com 137, ECS para a task, deregistra.
+
+  O que a pesquisa na doc da AWS mostrou é que o mecanismo é mais caro do que o item sugeria. `unhealthy` é estado próprio, não `draining` — o target continua registrado, continua sendo checkado e volta sozinho depois de 2 sucessos. E quem mata a task é o ECS, com start-before-stop: *"the service scheduler will first start a replacement task"*, e só para a doente quando a substituta fica `HEALTHY`. Modelar isso direito exige estado novo, relógio de health check por task com fase própria, contagem N+1 no `desiredCount`, recuperação, e uma segunda ferramenta ("quebrar o endpoint") sem a qual não dá para ver a diferença para o blast.
+
+  Se voltar à pauta, o argumento não é a ejeção: é a **janela de 60–90s de detecção**, em que a task está quebrada e ainda recebendo request. É o espelho exato do gap de `registering` que já está desenhado, e a única parte que o blast não mostra.
+
+  Dois achados soltos da mesma pesquisa, que valem por si: (1) **fail open** — *"If a target group contains only unhealthy registered targets, the load balancer routes requests to all those targets"*, com `unhealthy_state_routing.minimum_healthy_targets.count` em default 1; hoje `splitAtTheDoor` faz o oposto e zera tudo em `turnedAway`. Fica melhor depois do item de alarmes, que é quem acende a luz. (2) **`health_check_grace_period_seconds` não está definido no `aws_ecs_service`** — default 0, o que para o backend de produção que o `CLAUDE.md` manda imaginar é risco de crash loop. Esse é sobre o Terraform, não sobre o simulador.
 - **Duas colunas de ECS Tasks.** Testado e revertido. O grid empurrava os pacotes para cima dos cards (o `ViewportPortal` renderiza acima dos nodes) e *piorava* o enquadramento no mobile em retrato — 0,46 de zoom contra 0,54 da coluna única. A coluna única com card compacto resolveu o problema de altura sem esses custos.
 
 ## Lacunas entre o Terraform e o simulador
 
-Levantadas comparando recurso a recurso. Estas três não são features novas — são promessas que o simulador já faz e não cumpre.
+Levantada comparando recurso a recurso. Não é feature nova — é promessa que o simulador já faz e não cumpre.
 
-- [ ] **Ejetar target que ficou não saudável.** O `aws_lb_target_group` tem `unhealthy_threshold = 3`, mas o simulador só modela o `healthy_threshold` (é o estágio `registering`, 2 checks de 30s). Hoje uma task só sai do target group quando é explodida na mão; na AWS ela sai sozinha depois de 3 checks falhos. Metade do health check está simulada.
-- [ ] **Dar destino a `logs` e `secretsmanager`.** O tooltip do interface endpoint lista quatro serviços e só o ECR tem node do outro lado. Falta o CloudWatch Logs recebendo o que o driver `awslogs` manda de cada task, e o Secrets Manager sendo consultado pelo execution role antes do container subir. As portas prometem quatro caminhos e entregam um.
-- [ ] **Mostrar alarme disparando.** São 9 alarmes no `modules/observability` mais o tópico SNS onde eles caem. O card do Application Auto Scaling mostra `alarms OK` e a tooltip descreve AlarmHigh e AlarmLow em detalhe, mas nenhum alarme jamais acende. O simulador usa o vocabulário sem mostrar o evento.
+- [ ] **Mostrar alarme disparando.** São 9 alarmes no `modules/observability` mais o tópico SNS onde eles caem, e nenhum jamais acende. Atenção a uma confusão fácil: o `alarms OK` que já está na tela é do card do Application Auto Scaling, e são os AlarmHigh/AlarmLow do target tracking — outro mecanismo, que a AWS cria sozinha. Os 9 do módulo de observabilidade não têm node nenhum.
 
-Ordem sugerida: destino dos endpoints → ejeção de target → alarmes. O primeiro porque os nodes de CloudWatch e Secrets Manager que ele exige são pré-requisito do terceiro.
+  **Metade feita.** O motor existe e está testado: `simulation/observability-alarms.ts` carrega as 9 definições com o endereço Terraform de cada uma, e reproduz a semântica do CloudWatch — período, `evaluation_periods`, estatística por período (`Minimum` para HealthyHostCount, `Maximum` para UnHealthyHostCount, `Sum` para as linhas de log), `treat_missing_data`, e os três estados OK / ALARM / INSUFFICIENT_DATA. O store amostra a cada tick e o alarme `no_healthy_hosts` já dispara de verdade quando as tasks são explodidas, e volta a OK sozinho quando as substitutas ficam healthy.
+
+  **Falta a metade visual**: node de CloudWatch Alarms, node do tópico SNS, arestas e o estado aceso no canvas. Fica em `initial-graph.ts`, `node-data.ts`, `useRenderGraph.ts` e `useNetworkZoneLayout.ts`.
+
+  **4 dos 9 são alimentáveis** com o que a simulação produz hoje — `no_healthy_hosts`, `running_tasks_low`, `latency_p99` e `error_rate`. Os outros 5 dependem de métricas que o simulador não modela (CPU, memória, conexões do Aurora, linhas de erro de log) e de `UnHealthyHostCount`, que precisa do estado `unhealthy` adiado acima. Esses ficam em INSUFFICIENT_DATA de propósito: melhor um alarme honestamente sem dado do que um número inventado.

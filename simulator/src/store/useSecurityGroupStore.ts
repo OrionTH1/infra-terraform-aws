@@ -13,26 +13,24 @@ export interface BoundaryAnchor {
   height: number
 }
 
+export interface HoveredBoundary {
+  key: string
+  nodeId: string
+  boundaryId: string | null
+  pairId: string | null
+  anchor: BoundaryAnchor
+  content: TooltipContent
+}
+
 interface SecurityGroupState {
   hoveredPairId: string | null
+  hoveredBoundaryId: string | null
   hoveredKey: string | null
   hoveredNodeId: string | null
   hoveredAnchor: BoundaryAnchor | null
   hoveredContent: TooltipContent | null
-  hoverBoundary: (
-    key: string,
-    nodeId: string,
-    pairId: string | null,
-    anchor: BoundaryAnchor,
-    content: TooltipContent,
-  ) => void
-  toggleBoundary: (
-    key: string,
-    nodeId: string,
-    pairId: string | null,
-    anchor: BoundaryAnchor,
-    content: TooltipContent,
-  ) => void
+  hoverBoundary: (boundary: HoveredBoundary) => void
+  toggleBoundary: (boundary: HoveredBoundary) => void
   clearBoundary: (key: string) => void
   clearAllBoundaries: () => void
 }
@@ -40,31 +38,28 @@ interface SecurityGroupState {
 const CLOSED = {
   hoveredKey: null,
   hoveredNodeId: null,
+  hoveredBoundaryId: null,
   hoveredPairId: null,
   hoveredAnchor: null,
   hoveredContent: null,
 }
 
+function opened(boundary: HoveredBoundary) {
+  return {
+    hoveredKey: boundary.key,
+    hoveredNodeId: boundary.nodeId,
+    hoveredBoundaryId: boundary.boundaryId,
+    hoveredPairId: boundary.pairId,
+    hoveredAnchor: boundary.anchor,
+    hoveredContent: boundary.content,
+  }
+}
+
 export const useSecurityGroupStore = create<SecurityGroupState>((set) => ({
-  hoveredPairId: null,
-  hoveredKey: null,
-  hoveredNodeId: null,
-  hoveredAnchor: null,
-  hoveredContent: null,
-  hoverBoundary: (key, nodeId, pairId, anchor, content) =>
-    set({ hoveredKey: key, hoveredNodeId: nodeId, hoveredPairId: pairId, hoveredAnchor: anchor, hoveredContent: content }),
-  toggleBoundary: (key, nodeId, pairId, anchor, content) =>
-    set((state) =>
-      state.hoveredKey === key
-        ? CLOSED
-        : {
-            hoveredKey: key,
-            hoveredNodeId: nodeId,
-            hoveredPairId: pairId,
-            hoveredAnchor: anchor,
-            hoveredContent: content,
-          },
-    ),
+  ...CLOSED,
+  hoverBoundary: (boundary) => set(opened(boundary)),
+  toggleBoundary: (boundary) =>
+    set((state) => (state.hoveredKey === boundary.key ? CLOSED : opened(boundary))),
   clearBoundary: (key) => set((state) => (state.hoveredKey === key ? CLOSED : state)),
   clearAllBoundaries: () => set((state) => (state.hoveredKey === null ? state : CLOSED)),
 }))

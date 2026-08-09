@@ -1,7 +1,7 @@
 import { AWS_ALARM_EVALUATION, AURORA_SERVERLESS, AUTOSCALING } from '../simulation/simulation-config'
 import { IDLE_LATENCY } from '../simulation/latency'
 import { runningFloorAcu } from '../simulation/aurora-capacity'
-import { ALB_TO_ECS_PAIR, ECS_TO_RDS_PAIR } from '../simulation/security-groups'
+import { boundaryKey } from '../simulation/security-groups'
 import { NO_ALARM } from '../simulation/autoscaling-alarm'
 import { GATEWAY_ENDPOINT, INTERFACE_ENDPOINTS } from '../simulation/vpc-endpoints'
 import {
@@ -47,14 +47,9 @@ export const ECR_NODE_ID = 'ecr'
 export const LAYER_STORAGE_NODE_ID = 'layer-storage'
 export const CLOUDWATCH_LOGS_NODE_ID = 'cloudwatch-logs'
 export const SECRETS_MANAGER_NODE_ID = 'secrets-manager'
-export const LOGS_JUNCTION_NODE_ID = 'logs-junction'
 export const ENDPOINT_TO_LOGS_EDGE_ID = 'interface-endpoints-cloudwatch-logs'
 export const ENDPOINT_TO_SECRETS_EDGE_ID = 'interface-endpoints-secrets-manager'
-export const LOGS_JUNCTION_TO_ENDPOINT_EDGE_ID = 'logs-junction-interface-endpoints'
-
-export function taskToLogsEdgeId(taskId: string): string {
-  return `${taskId}-${LOGS_JUNCTION_NODE_ID}`
-}
+export const SERVICE_TO_ENDPOINT_EDGE_ID = 'ecs-service-interface-endpoints'
 
 export function taskToSecretsEdgeId(taskId: string): string {
   return `${taskId}-${SECRETS_MANAGER_NODE_ID}`
@@ -110,7 +105,7 @@ export const AURORA_FRAME = auroraFrameFor(FALLBACK_RDS_INSTANCE_SIZE)
 
 export const ENDPOINT_CARD_WIDTH = 210
 export const REGIONAL_SERVICE_GAP = 96
-export const LOGS_JUNCTION_GAP = 60
+export const LOGS_EGRESS_LANE = 64
 export const ENDPOINT_COLUMN_GAP = 24
 export const DOOR_WIDTH = 48
 export const DOOR_HEIGHT = 9
@@ -145,18 +140,41 @@ export function albToTaskEdgeId(taskId: string): string {
   return `${ALB_NODE_ID}-${taskId}`
 }
 
-export function isEdgeInSecurityGroupPair(edgeId: string, pairId: string | null): boolean {
-  if (pairId === ALB_TO_ECS_PAIR) return edgeId.startsWith(`${ALB_NODE_ID}-task-`)
+const TASK_EGRESS_DESTINATIONS = [
+  DB_JUNCTION_NODE_ID,
+  INTERFACE_ENDPOINTS_NODE_ID,
+  GATEWAY_ENDPOINT_NODE_ID,
+  SECRETS_MANAGER_NODE_ID,
+]
 
-  if (pairId === ECS_TO_RDS_PAIR) {
-    return (
-      edgeId.endsWith(`-${DB_JUNCTION_NODE_ID}`) ||
-      edgeId === JUNCTION_TO_WRITER_EDGE_ID ||
-      edgeId === JUNCTION_TO_READER_EDGE_ID
-    )
+function isDatabaseEdge(edgeId: string): boolean {
+  return (
+    edgeId.endsWith(`-${DB_JUNCTION_NODE_ID}`) ||
+    edgeId === JUNCTION_TO_WRITER_EDGE_ID ||
+    edgeId === JUNCTION_TO_READER_EDGE_ID
+  )
+}
+
+function isTaskEgressEdge(edgeId: string): boolean {
+  if (!edgeId.startsWith('task-')) return false
+
+  return TASK_EGRESS_DESTINATIONS.some((destination) => edgeId.endsWith(`-${destination}`))
+}
+
+export function isEdgeUnderSecurityGroupRule(edgeId: string, boundaryId: string | null): boolean {
+  switch (boundaryId) {
+    case boundaryKey('alb', 'out'):
+    case boundaryKey('task', 'in'):
+      return edgeId.startsWith(`${ALB_NODE_ID}-task-`)
+    case boundaryKey('task', 'out'):
+      return isDatabaseEdge(edgeId) || isTaskEgressEdge(edgeId)
+    case boundaryKey('ecsService', 'logs-out'):
+      return edgeId === SERVICE_TO_ENDPOINT_EDGE_ID
+    case boundaryKey('rdsInstance', 'in'):
+      return isDatabaseEdge(edgeId)
+    default:
+      return false
   }
-
-  return false
 }
 
 export const NODE_RESOURCE_ID: Record<string, ResourceId> = {
@@ -225,7 +243,9 @@ export function doorPositions(
 }
 
 export function privateTierBoxes(serviceFrame: FrameBox, auroraFrame: FrameBox): ContentBox[] {
-  return [frameContentBox(serviceFrame), frameContentBox(auroraFrame)]
+  const service = frameContentBox(serviceFrame)
+
+  return [{ ...service, bottom: service.bottom + LOGS_EGRESS_LANE }, frameContentBox(auroraFrame)]
 }
 
 const INITIAL_ZONES = networkZoneFrames(
@@ -252,15 +272,6 @@ export function regionalServicePositions(
 
 const INITIAL_DOORS = doorPositions(INITIAL_ZONES.vpc, INITIAL_SERVICE_FRAME)
 const INITIAL_REGIONAL_SERVICES = regionalServicePositions(INITIAL_ZONES.vpc, INITIAL_SERVICE_FRAME)
-
-export const LOGS_JUNCTION_SIZE = 12
-
-export function logsJunctionPosition(vpcFrame: FrameBox, serviceFrame: FrameBox): XYPosition {
-  return {
-    x: doorPositions(vpcFrame, serviceFrame).interface.x + DOOR_WIDTH / 2 - LOGS_JUNCTION_SIZE / 2,
-    y: serviceFrame.position.y + serviceFrame.height + LOGS_JUNCTION_GAP,
-  }
-}
 
 const CLOUDWATCH_LOGS_TOOLTIP =
   'Every line the container writes goes here, shipped by the awslogs driver on the task itself rather than by anything you run. That is why the log group is created in Terraform and the execution role is granted to write to it. The stream leaves through the interface endpoint, so log delivery never depends on a route to the internet. A metric filter over this group counts error lines, and that count is what one of the alarms watches.'
@@ -514,15 +525,6 @@ export const initialNodes: SimulatorFlowNode[] = [
     deletable: false,
   },
   {
-    id: LOGS_JUNCTION_NODE_ID,
-    type: 'dbJunction',
-    position: logsJunctionPosition(INITIAL_ZONES.vpc, INITIAL_SERVICE_FRAME),
-    data: {},
-    draggable: false,
-    deletable: false,
-    selectable: false,
-  },
-  {
     id: LAYER_STORAGE_NODE_ID,
     type: 'regionalService',
     position: INITIAL_REGIONAL_SERVICES.storage,
@@ -555,7 +557,10 @@ export const initialNodes: SimulatorFlowNode[] = [
     id: DB_JUNCTION_NODE_ID,
     type: 'dbJunction',
     position: DB_JUNCTION_POSITION,
-    data: {},
+    data: {
+      hint: "Where each task's connection pool splits between the writer and reader endpoints",
+      axis: 'horizontal',
+    },
     draggable: false,
     deletable: false,
     selectable: false,
@@ -644,10 +649,10 @@ export const initialEdges: SimulatorFlowEdge[] = [
     selectable: false,
   },
   {
-    id: LOGS_JUNCTION_TO_ENDPOINT_EDGE_ID,
+    id: SERVICE_TO_ENDPOINT_EDGE_ID,
     type: 'requestFlow',
-    source: LOGS_JUNCTION_NODE_ID,
-    sourceHandle: 'out',
+    source: ECS_SERVICE_NODE_ID,
+    sourceHandle: 'logs-out',
     target: INTERFACE_ENDPOINTS_NODE_ID,
     targetHandle: 'in',
     data: { requestsPerMinute: 0 },

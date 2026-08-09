@@ -5,7 +5,6 @@ const SECRET_FETCH_STATUSES: TaskStatus[] = ['starting']
 
 export interface LogShipmentLegs {
   taskId: string
-  junctionEdgeId: string
   endpointEdgeId: string
   serviceEdgeId: string
 }
@@ -24,16 +23,10 @@ export function isFetchingSecret(status: TaskStatus): boolean {
   return SECRET_FETCH_STATUSES.includes(status)
 }
 
-export function hasEgressToEndpoints(status: TaskStatus): boolean {
-  return status === 'provisioning' || status === 'starting' || status === 'healthy'
-}
-
 export function buildLogShipment(legs: LogShipmentLegs, liveEdgeIds: Set<string>): ItineraryLeg[] {
-  return [
-    leg(legs.junctionEdgeId, false, false),
-    leg(legs.endpointEdgeId, false),
-    leg(legs.serviceEdgeId, false),
-  ].filter((entry) => liveEdgeIds.has(entry.edgeId))
+  return [leg(legs.endpointEdgeId, false), leg(legs.serviceEdgeId, false)].filter((entry) =>
+    liveEdgeIds.has(entry.edgeId),
+  )
 }
 
 export function buildSecretFetch(legs: SecretFetchLegs, liveEdgeIds: Set<string>): ItineraryLeg[] {

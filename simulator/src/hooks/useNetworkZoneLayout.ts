@@ -17,7 +17,6 @@ import {
   INTERFACE_ENDPOINTS_NODE_ID,
   CLOUDWATCH_LOGS_NODE_ID,
   LAYER_STORAGE_NODE_ID,
-  LOGS_JUNCTION_NODE_ID,
   SECRETS_MANAGER_NODE_ID,
   CLUSTER_VOLUME_NODE_ID,
   CLUSTER_VOLUME_POSITION,
@@ -29,7 +28,6 @@ import {
   WAF_NODE_ID,
   doorPositions,
   privateTierBoxes,
-  logsJunctionPosition,
   regionalServicePositions,
 } from '../canvas/initial-graph'
 import { networkZoneFrames } from '../canvas/network-zones'
@@ -119,7 +117,6 @@ export function useNetworkZoneLayout({ serviceFrame }: NetworkZoneLayoutArgs): N
         [CLOUDWATCH_LOGS_NODE_ID, regionalServices.logs],
         [SECRETS_MANAGER_NODE_ID, regionalServices.secrets],
         [LAYER_STORAGE_NODE_ID, regionalServices.storage],
-        [LOGS_JUNCTION_NODE_ID, logsJunctionPosition(zones.vpc, serviceFrame)],
       ]),
       wafPosition: { x: ALB_POSITION.x, y: zones.controlPlaneBottom - wafHeight },
       autoScalingPosition: { x: TASK_COLUMN_X, y: zones.controlPlaneBottom - autoScalingHeight },

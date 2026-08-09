@@ -9,18 +9,21 @@ const RESPONSE_TOKEN: Record<PacketColor, string> = {
   default: '--color-status-healthy',
   write: '--color-status-healthy',
   blocked: '--color-status-error',
+  rejected: '--color-status-error',
 }
 
 const COLOR_TOKEN: Record<PacketColor, string> = {
   default: '--color-border-interaction',
   write: '--color-status-warning',
   blocked: '--color-status-error',
+  rejected: '--color-status-error',
 }
 
 const GLOW_ALPHA: Record<PacketColor, number> = {
   default: 0.45,
   write: 0.45,
   blocked: 0.5,
+  rejected: 0.5,
 }
 
 export const SPRITE_SIZE_PX = (PACKET_RADIUS + PACKET_GLOW_PX) * 2
@@ -92,11 +95,13 @@ export function buildPacketSprites(): PacketSprites {
       default: drawSprite(COLOR_TOKEN.default, GLOW_ALPHA.default, 'request'),
       write: drawSprite(COLOR_TOKEN.write, GLOW_ALPHA.write, 'request'),
       blocked: drawSprite(COLOR_TOKEN.blocked, GLOW_ALPHA.blocked, 'request'),
+      rejected: drawSprite(COLOR_TOKEN.rejected, GLOW_ALPHA.rejected, 'request'),
     },
     response: {
       default: drawSprite(RESPONSE_TOKEN.default, 0.5, 'response'),
       write: drawSprite(RESPONSE_TOKEN.write, 0.5, 'response'),
       blocked: drawSprite(RESPONSE_TOKEN.blocked, 0.5, 'response'),
+      rejected: drawSprite(RESPONSE_TOKEN.rejected, 0.5, 'response'),
     },
   }
 }

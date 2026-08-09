@@ -9,7 +9,12 @@ import {
   PAGE_CACHE_EDGE_ID,
   READER_TO_VOLUME_EDGE_ID,
 } from '../canvas/initial-graph'
-import { buildRequestItinerary, divertToWriter, queriesForNextRequest } from '../simulation/request-itinerary'
+import {
+  abandonDatabaseTrip,
+  buildRequestItinerary,
+  divertToWriter,
+  queriesForNextRequest,
+} from '../simulation/request-itinerary'
 import { servesFromCache } from '../simulation/aurora-cache'
 import {
   buildLogShipment,
@@ -513,12 +518,20 @@ export function usePacketFlow({
             onImagePullComplete(packet.routeKey)
             continue
           }
-          if (writeLegs === null) continue
+          const diverted =
+            writeLegs === null ? null : divertToWriter(packet.legs, packet.legIndex, REPLICA_EDGES, writeLegs)
 
-          const diverted = divertToWriter(packet.legs, packet.legIndex, REPLICA_EDGES, writeLegs)
-          if (!isRouteIntact(diverted, packet.legIndex, currentLiveEdgeIds)) continue
+          if (diverted !== null && isRouteIntact(diverted, packet.legIndex, currentLiveEdgeIds)) {
+            packet.legs = diverted
+          } else {
+            const homeward = abandonDatabaseTrip(packet.legs, packet.legIndex, currentLiveEdgeIds)
+            if (homeward === null) continue
 
-          packet.legs = diverted
+            packet.legs = homeward
+            packet.legProgress = 0
+            packet.dwellUntil = null
+            packet.color = 'rejected'
+          }
         }
 
         const legBefore = packet.legIndex

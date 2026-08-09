@@ -1,6 +1,11 @@
 import { Handle, useNodeId, type HandleProps } from '@xyflow/react'
 import { boundaryDirection, boundaryKey, formatRule, securityGroupBoundary } from '../../simulation/security-groups'
-import { useSecurityGroupStore, type BoundaryAnchor, type TooltipContent } from '../../store/useSecurityGroupStore'
+import {
+  useSecurityGroupStore,
+  type BoundaryAnchor,
+  type HoveredBoundary,
+  type TooltipContent,
+} from '../../store/useSecurityGroupStore'
 import type { SecurityGroupBoundary } from '../../simulation/security-groups'
 
 function tooltipFor(boundary: SecurityGroupBoundary): TooltipContent {
@@ -46,6 +51,15 @@ export function SecurityGroupHandle({ nodeType, id, ...handleProps }: SecurityGr
 
   const markClass = `shrink-0 transition-colors duration-150 ${isLit ? 'lit' : ''}`
 
+  const hovered = (element: HTMLElement): HoveredBoundary => ({
+    key,
+    nodeId: nodeId ?? '',
+    boundaryId: boundaryKey(nodeType, id ?? ''),
+    pairId: boundary.pairId,
+    anchor: anchorOf(element),
+    content: tooltipFor(boundary),
+  })
+
   return (
     <Handle
       id={id}
@@ -55,11 +69,11 @@ export function SecurityGroupHandle({ nodeType, id, ...handleProps }: SecurityGr
       role="button"
       aria-expanded={isOpen}
       aria-label={`${direction} ${boundary.rules[0].securityGroup}: ${boundary.rules.map(formatRule).join(', ')}`}
-      onMouseEnter={(event) => hoverBoundary(key, nodeId ?? '', boundary.pairId, anchorOf(event.currentTarget), tooltipFor(boundary))}
+      onMouseEnter={(event) => hoverBoundary(hovered(event.currentTarget))}
       onMouseLeave={() => clearBoundary(key)}
-      onFocus={(event) => hoverBoundary(key, nodeId ?? '', boundary.pairId, anchorOf(event.currentTarget), tooltipFor(boundary))}
+      onFocus={(event) => hoverBoundary(hovered(event.currentTarget))}
       onBlur={() => clearBoundary(key)}
-      onClick={(event) => toggleBoundary(key, nodeId ?? '', boundary.pairId, anchorOf(event.currentTarget), tooltipFor(boundary))}
+      onClick={(event) => toggleBoundary(hovered(event.currentTarget))}
     >
       <span
         className={`pointer-events-none flex items-center gap-[3px] ${isIngress ? 'flex-row-reverse' : 'flex-row'}`}

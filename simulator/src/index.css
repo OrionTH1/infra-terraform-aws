@@ -325,6 +325,14 @@
   right: -11px;
 }
 
+.react-flow .react-flow__handle-bottom.sg-handle {
+  bottom: -11px;
+}
+
+.react-flow .react-flow__handle-bottom.sg-handle > span {
+  transform: rotate(90deg);
+}
+
 .react-flow .react-flow__handle.sg-handle.connectionindicator,
 .react-flow .react-flow__handle.sg-handle.connectionindicator:hover {
   border: none;

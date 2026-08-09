@@ -4,17 +4,24 @@ import {
   ECS_TO_RDS_PAIR,
   SECURITY_GROUP_BOUNDARIES,
   boundaryDirection,
+  boundaryKey,
   formatRule,
   securityGroupBoundary,
   type SecurityGroupBoundary,
   type SecurityGroupRule,
 } from './security-groups'
 import {
+  ENDPOINT_TO_LOGS_EDGE_ID,
+  ENDPOINT_TO_SECRETS_EDGE_ID,
   JUNCTION_TO_READER_EDGE_ID,
   JUNCTION_TO_WRITER_EDGE_ID,
+  SERVICE_TO_ENDPOINT_EDGE_ID,
   albToTaskEdgeId,
-  isEdgeInSecurityGroupPair,
+  isEdgeUnderSecurityGroupRule,
   taskToJunctionEdgeId,
+  taskToRegistryEdgeId,
+  taskToSecretsEdgeId,
+  taskToStorageEdgeId,
 } from '../canvas/initial-graph'
 
 function boundariesInPair(pairId: string): SecurityGroupBoundary[] {
@@ -33,6 +40,7 @@ describe('the catalog', () => {
     expect(Object.keys(SECURITY_GROUP_BOUNDARIES).sort()).toEqual([
       'alb:in',
       'alb:out',
+      'ecsService:logs-out',
       'rdsInstance:in',
       'task:in',
       'task:out',
@@ -107,26 +115,69 @@ describe('the public edge of the VPC', () => {
   })
 })
 
-describe('which edges belong to a pair', () => {
-  it('lights every alb to task edge for the front pair', () => {
-    expect(isEdgeInSecurityGroupPair(albToTaskEdgeId('task-1'), ALB_TO_ECS_PAIR)).toBe(true)
-    expect(isEdgeInSecurityGroupPair(albToTaskEdgeId('task-7'), ALB_TO_ECS_PAIR)).toBe(true)
+describe('which edges a hovered rule lights up', () => {
+  const ALB_EGRESS = boundaryKey('alb', 'out')
+  const TASK_INGRESS = boundaryKey('task', 'in')
+  const TASK_EGRESS = boundaryKey('task', 'out')
+  const RDS_INGRESS = boundaryKey('rdsInstance', 'in')
+
+  it('lights every alb to task edge from either side of the front boundary', () => {
+    for (const boundary of [ALB_EGRESS, TASK_INGRESS]) {
+      expect(isEdgeUnderSecurityGroupRule(albToTaskEdgeId('task-1'), boundary)).toBe(true)
+      expect(isEdgeUnderSecurityGroupRule(albToTaskEdgeId('task-7'), boundary)).toBe(true)
+    }
   })
 
   it('lights the whole path to the database, junction included', () => {
-    expect(isEdgeInSecurityGroupPair(taskToJunctionEdgeId('task-1'), ECS_TO_RDS_PAIR)).toBe(true)
-    expect(isEdgeInSecurityGroupPair(JUNCTION_TO_WRITER_EDGE_ID, ECS_TO_RDS_PAIR)).toBe(true)
-    expect(isEdgeInSecurityGroupPair(JUNCTION_TO_READER_EDGE_ID, ECS_TO_RDS_PAIR)).toBe(true)
+    expect(isEdgeUnderSecurityGroupRule(taskToJunctionEdgeId('task-1'), TASK_EGRESS)).toBe(true)
+    expect(isEdgeUnderSecurityGroupRule(JUNCTION_TO_WRITER_EDGE_ID, TASK_EGRESS)).toBe(true)
+    expect(isEdgeUnderSecurityGroupRule(JUNCTION_TO_READER_EDGE_ID, TASK_EGRESS)).toBe(true)
   })
 
-  it('keeps the two pairs from lighting each other up', () => {
-    expect(isEdgeInSecurityGroupPair(albToTaskEdgeId('task-1'), ECS_TO_RDS_PAIR)).toBe(false)
-    expect(isEdgeInSecurityGroupPair(JUNCTION_TO_WRITER_EDGE_ID, ALB_TO_ECS_PAIR)).toBe(false)
+  it('lights the calls to the endpoints too, because the same egress rules allow them', () => {
+    for (const edgeId of [
+      taskToRegistryEdgeId('task-1'),
+      taskToStorageEdgeId('task-1'),
+      taskToSecretsEdgeId('task-1'),
+    ]) {
+      expect(isEdgeUnderSecurityGroupRule(edgeId, TASK_EGRESS)).toBe(true)
+    }
+  })
+
+  it('gives the shared log line its own boundary, on the frame it actually leaves', () => {
+    const SERVICE_EGRESS = boundaryKey('ecsService', 'logs-out')
+
+    expect(isEdgeUnderSecurityGroupRule(SERVICE_TO_ENDPOINT_EDGE_ID, SERVICE_EGRESS)).toBe(true)
+    expect(isEdgeUnderSecurityGroupRule(SERVICE_TO_ENDPOINT_EDGE_ID, TASK_EGRESS)).toBe(false)
+    expect(isEdgeUnderSecurityGroupRule(taskToRegistryEdgeId('task-1'), SERVICE_EGRESS)).toBe(false)
+  })
+
+  it('declares that line under the same security group the tasks egress by', () => {
+    const service = securityGroupBoundary('ecsService', 'logs-out')?.rules ?? []
+    const task = securityGroupBoundary('task', 'out')?.rules ?? []
+
+    expect(service).toHaveLength(1)
+    expect(task).toContainEqual(service[0])
+  })
+
+  it('stops at the endpoint, since nothing beyond it answers to this security group', () => {
+    expect(isEdgeUnderSecurityGroupRule(ENDPOINT_TO_LOGS_EDGE_ID, TASK_EGRESS)).toBe(false)
+    expect(isEdgeUnderSecurityGroupRule(ENDPOINT_TO_SECRETS_EDGE_ID, TASK_EGRESS)).toBe(false)
+  })
+
+  it('leaves the endpoint traffic dark from the database side, which never allowed it', () => {
+    expect(isEdgeUnderSecurityGroupRule(taskToJunctionEdgeId('task-1'), RDS_INGRESS)).toBe(true)
+    expect(isEdgeUnderSecurityGroupRule(SERVICE_TO_ENDPOINT_EDGE_ID, RDS_INGRESS)).toBe(false)
+  })
+
+  it('keeps the two boundaries from lighting each other up', () => {
+    expect(isEdgeUnderSecurityGroupRule(albToTaskEdgeId('task-1'), TASK_EGRESS)).toBe(false)
+    expect(isEdgeUnderSecurityGroupRule(JUNCTION_TO_WRITER_EDGE_ID, ALB_EGRESS)).toBe(false)
   })
 
   it('lights nothing while no boundary is hovered', () => {
-    expect(isEdgeInSecurityGroupPair(albToTaskEdgeId('task-1'), null)).toBe(false)
-    expect(isEdgeInSecurityGroupPair(JUNCTION_TO_WRITER_EDGE_ID, null)).toBe(false)
+    expect(isEdgeUnderSecurityGroupRule(albToTaskEdgeId('task-1'), null)).toBe(false)
+    expect(isEdgeUnderSecurityGroupRule(JUNCTION_TO_WRITER_EDGE_ID, null)).toBe(false)
   })
 })
 

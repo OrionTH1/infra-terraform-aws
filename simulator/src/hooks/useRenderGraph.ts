@@ -12,7 +12,7 @@ import {
   METRIC_EDGE_ID,
   DESIRED_COUNT_EDGE_ID,
   REGION_NODE_ID,
-  isEdgeInSecurityGroupPair,
+  isEdgeUnderSecurityGroupRule,
 } from '../canvas/initial-graph'
 import { useSecurityGroupStore } from '../store/useSecurityGroupStore'
 import {
@@ -167,7 +167,7 @@ export function useRenderGraph({
   const desiredCount = useSimulationStore((state) => state.desiredCount)
   const scaleOutBreachAt = useSimulationStore((state) => state.scaleOutBreachAt)
   const scaleInBreachAt = useSimulationStore((state) => state.scaleInBreachAt)
-  const hoveredPairId = useSecurityGroupStore((state) => state.hoveredPairId)
+  const hoveredBoundaryId = useSecurityGroupStore((state) => state.hoveredBoundaryId)
 
   const serviceTaskCounts = useMemo(() => countServiceTasks(tasks.map((task) => task.status)), [tasks])
   const isPullingTaskImage = useMemo(() => isPullingImage(tasks.map((task) => task.status)), [tasks])
@@ -435,10 +435,10 @@ export function useRenderGraph({
       })
 
     const withTaskEdges = [...projected, ...taskGraph.taskEdges]
-    if (hoveredPairId === null) return withTaskEdges
+    if (hoveredBoundaryId === null) return withTaskEdges
 
     return withTaskEdges.map((edge) =>
-      edge.type === 'requestFlow' && isEdgeInSecurityGroupPair(edge.id, hoveredPairId)
+      edge.type === 'requestFlow' && isEdgeUnderSecurityGroupRule(edge.id, hoveredBoundaryId)
         ? ({ ...edge, data: { ...edge.data, isSecurityGroupLit: true } } as SimulatorFlowEdge)
         : edge,
     )
@@ -453,7 +453,7 @@ export function useRenderGraph({
     desiredCount,
     isScalingCommandLive,
     requestsPerMinutePerTask,
-    hoveredPairId,
+    hoveredBoundaryId,
   ])
 
   const liveEdgeIds = useMemo(() => new Set(renderEdges.map((edge) => edge.id)), [renderEdges])

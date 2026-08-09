@@ -39,11 +39,17 @@ import {
   IDLE_LATENCY,
   appendLatencySample,
   computeLatency,
+  p99Ms,
   sameDisplayedLatency,
   smoothLatency,
   type LatencyBreakdown,
 } from '../simulation/latency'
 import { isRunningTask, selectDrainIndexes } from '../simulation/scale-in'
+import {
+  createAlarmBoard,
+  recordAlarmSamples,
+  type AlarmBoard,
+} from '../simulation/observability-alarms'
 import { splitReadWrite } from '../simulation/traffic-distribution'
 import { advanceWafSource, createWafSource, windowRequestCount, type WafSourceState } from '../simulation/waf'
 import type { TaskStatus } from '../types/task-data'
@@ -98,6 +104,7 @@ interface SimulationState {
   rdsSlots: RdsSlots
   hasSeededRdsWriter: boolean
   hasSeededRdsReader: boolean
+  alarms: AlarmBoard
   latency: LatencyBreakdown
   displayedLatency: LatencyBreakdown
   latencyHistory: number[]
@@ -191,6 +198,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   rdsSlots: { writer: null, reader: null },
   hasSeededRdsWriter: false,
   hasSeededRdsReader: false,
+  alarms: createAlarmBoard(0),
   latency: IDLE_LATENCY,
   displayedLatency: IDLE_LATENCY,
   latencyHistory: [],
@@ -439,9 +447,23 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
     const isLatencySampleDue = now - state.lastLatencySampleAt >= LATENCY.historySampleMs
 
+    const alarms = hasServiceStarted
+      ? recordAlarmSamples(
+          state.alarms,
+          {
+            healthyHostCount: healthyTaskCount,
+            runningTaskCount: tasks.filter((task) => isRunningTask(task.status)).length,
+            targetResponseTimeP99Seconds: p99Ms(latency.totalMs) / 1000,
+            errorRatePercent: healthyTaskCount === 0 && currentRequestRate > 0 ? 100 : 0,
+          },
+          now,
+        )
+      : state.alarms
+
     set({
       clock: now,
       resources,
+      alarms,
       latency,
       displayedLatency: sameDisplayedLatency(state.displayedLatency, latency) ? state.displayedLatency : latency,
       latencyHistory: isLatencySampleDue

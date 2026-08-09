@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { buildRequestItinerary, queriesForNextRequest, type QueryKind } from './request-itinerary'
+import {
+  abandonDatabaseTrip,
+  buildRequestItinerary,
+  queriesForNextRequest,
+  type QueryKind,
+} from './request-itinerary'
 import { PACKET_SPEED_PX_PER_SECOND } from './packets'
 import { WORKLOAD } from './simulation-config'
 
@@ -156,5 +161,49 @@ describe('how many queries a request makes', () => {
 
     expect(writes).toBeGreaterThan(0)
     expect(writes / kinds.length).toBeLessThan(0.5)
+  })
+})
+
+describe('a request already in flight when the database goes away', () => {
+  const NO_DATABASE = new Set([ENTRY, ALB])
+
+  function inFlightAtTheReader() {
+    const legs = itinerary(['read'])
+    return { legs, legIndex: legs.findIndex((leg) => leg.edgeId === READER && !leg.reversed) }
+  }
+
+  it('is not thrown away — it turns around and answers the user', () => {
+    const { legs, legIndex } = inFlightAtTheReader()
+    const homeward = abandonDatabaseTrip(legs, legIndex, NO_DATABASE)
+
+    expect(homeward).not.toBeNull()
+    expect(homeward?.slice(legIndex).map((leg) => leg.edgeId)).toEqual([ALB, ENTRY])
+  })
+
+  it('keeps the legs it already travelled, so it does not jump across the canvas', () => {
+    const { legs, legIndex } = inFlightAtTheReader()
+    const homeward = abandonDatabaseTrip(legs, legIndex, NO_DATABASE)
+
+    expect(homeward?.slice(0, legIndex)).toEqual(legs.slice(0, legIndex))
+  })
+
+  it('comes back marked as rejected rather than as a healthy response', () => {
+    const { legs, legIndex } = inFlightAtTheReader()
+    const homeward = abandonDatabaseTrip(legs, legIndex, NO_DATABASE)
+
+    expect(new Set(homeward?.slice(legIndex).map((leg) => leg.color))).toEqual(new Set(['rejected']))
+  })
+
+  it('drops the request only when there is no way home left', () => {
+    const { legs, legIndex } = inFlightAtTheReader()
+
+    expect(abandonDatabaseTrip(legs, legIndex, new Set<string>())).toBeNull()
+  })
+
+  it('always gives up on what is ahead — the caller is the one that decides to call it', () => {
+    const legs = itinerary(['read'])
+    const homeward = abandonDatabaseTrip(legs, 0, EVERYTHING_UP)
+
+    expect(homeward?.map((leg) => leg.edgeId)).toEqual(legs.filter((leg) => leg.reversed).map((leg) => leg.edgeId))
   })
 })
