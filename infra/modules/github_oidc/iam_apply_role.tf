@@ -58,6 +58,62 @@ data "aws_iam_policy_document" "apply_permissions" {
   }
 
   statement {
+    sid = "UseServiceManagedEncryptionKeys"
+    actions = [
+      "kms:DescribeKey",
+      "kms:GenerateDataKey",
+      "kms:Decrypt",
+    ]
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values = [
+        "rds.${data.aws_region.current.region}.amazonaws.com",
+        "secretsmanager.${data.aws_region.current.region}.amazonaws.com",
+        "sns.${data.aws_region.current.region}.amazonaws.com",
+      ]
+    }
+  }
+
+  statement {
+    sid       = "GrantEncryptionToAwsServices"
+    actions   = ["kms:CreateGrant"]
+    resources = ["*"]
+
+    condition {
+      test     = "Bool"
+      variable = "kms:GrantIsForAWSResource"
+      values   = ["true"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestedRegion"
+      values   = [data.aws_region.current.region]
+    }
+  }
+
+  statement {
+    sid       = "CreateServiceLinkedRolesForProjectServices"
+    actions   = ["iam:CreateServiceLinkedRole"]
+    resources = ["*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:AWSServiceName"
+      values = [
+        "wafv2.amazonaws.com",
+        "rds.amazonaws.com",
+        "ecs.amazonaws.com",
+        "elasticloadbalancing.amazonaws.com",
+        "ecs.application-autoscaling.amazonaws.com",
+      ]
+    }
+  }
+
+  statement {
     sid = "ManageProjectIamRoles"
     actions = [
       "iam:CreateRole",
