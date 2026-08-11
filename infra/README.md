@@ -116,7 +116,7 @@ Isso é feito uma vez. As roles vivem na camada permanente, então destruir o wo
 
 ## Exceções de segurança aceitas
 
-O Checkov roda no CI sem credencial da AWS, só lendo os arquivos, e quebra o build em qualquer achado. Estado atual: **305 checks passando, 0 falhando, 29 suprimidos**.
+O Checkov roda no CI sem credencial da AWS, só lendo os arquivos, e quebra o build em qualquer achado. Estado atual: **327 checks passando, 0 falhando, 36 suprimidos**.
 
 Toda supressão é inline, ao lado do recurso, com a justificativa dentro do próprio `checkov:skip`. Nenhuma fica escondida num arquivo global. Os agrupamentos:
 
