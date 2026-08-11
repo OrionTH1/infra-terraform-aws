@@ -54,7 +54,7 @@ jobs:
       # image never reaches the registry in the first place, instead of being found there
       # after the fact. The repository is IMMUTABLE, so a bad tag cannot be overwritten.
       - name: Scan image for vulnerabilities
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ steps.build-image.outputs.image }}
           format: sarif
