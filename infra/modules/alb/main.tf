@@ -2,7 +2,7 @@ resource "aws_lb" "this" {
   # checkov:skip=CKV2_AWS_20:HTTP-to-HTTPS redirect arrives with the HTTPS listener in Phase 5, which is paused until a domain is registered.
   # checkov:skip=CKV_AWS_150:Deletion protection is parameterised (var.enable_deletion_protection). The default is off so a dev environment can be torn down; production sets it on.
   # checkov:skip=CKV2_AWS_28:WAF is attached from the waf module via aws_wafv2_web_acl_association, which Checkov's graph check does not follow across modules.
-  # checkov:skip=CKV_AWS_91:Access logging deliberately deferred — see "Exceções de segurança aceitas" in ARCHITECTURE.md.
+  # checkov:skip=CKV_AWS_91:Access logging deliberately deferred — see "Exceções de segurança aceitas" in infra/README.md.
   name               = "${var.project}-${var.environment}-alb"
   internal           = false
   load_balancer_type = "application"
@@ -46,7 +46,7 @@ resource "aws_lb_target_group" "app" {
 }
 
 resource "aws_lb_listener" "http" {
-  # checkov:skip=CKV_AWS_2:HTTP-only until a domain is registered — the HTTPS listener + ACM certificate is Phase 5 of the roadmap, currently paused. Tracked in ARCHITECTURE.md.
+  # checkov:skip=CKV_AWS_2:HTTP-only until a domain is registered. The HTTPS listener and its ACM certificate wait on a registered domain.
   # checkov:skip=CKV_AWS_103:TLS policy is not applicable to an HTTP listener; it arrives with the HTTPS listener in Phase 5.
   load_balancer_arn = aws_lb.this.arn
   port              = 80

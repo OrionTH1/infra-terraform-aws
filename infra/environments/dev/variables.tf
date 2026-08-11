@@ -41,7 +41,7 @@ variable "alarm_email" {
 
 variable "container_insights" {
   type        = string
-  description = "Container Insights mode: \"disabled\", \"enabled\" or \"enhanced\". See ARCHITECTURE.md section 6 for the cost trade-off."
+  description = "Container Insights mode: \"disabled\", \"enabled\" or \"enhanced\". Enhanced multiplies the metric count and the cost."
   default     = "enabled"
 }
 

@@ -1,6 +1,6 @@
 # Global skips only for checks that do not apply to this project as a whole.
 # Anything specific to one resource is suppressed inline, next to the resource, with a
-# justification — see "Exceções de segurança aceitas" in ARCHITECTURE.md.
+# justification — see "Exceções de segurança aceitas" in infra/README.md.
 skip-check:
   # CKV_AWS_18 / CKV2_AWS_62: S3 access logging and event notifications on the state
   # bucket. That bucket is intentionally not managed by Terraform (infra/README.md),
