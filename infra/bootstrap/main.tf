@@ -35,9 +35,9 @@ module "ecr" {
 module "github_oidc" {
   source = "../modules/github_oidc"
 
-  project           = var.project
-  environment       = var.environment
-  github_repository = var.github_repository
+  project               = var.project
+  environment           = var.environment
+  github_subject_prefix = var.github_subject_prefix
 
   state_bucket_arn = aws_s3_bucket.state.arn
   state_key        = "${var.environment}/terraform.tfstate"

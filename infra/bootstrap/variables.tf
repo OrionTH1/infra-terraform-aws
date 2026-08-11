@@ -28,8 +28,8 @@ variable "state_bucket_name" {
   default     = "ecs-portfolio-tfstate-b41d7649"
 }
 
-variable "github_repository" {
+variable "github_subject_prefix" {
   type        = string
-  description = "GitHub repository in \"owner/repo\" format, used to scope the OIDC trust policies."
-  default     = "OrionTH1/infra-terraform-aws"
+  description = "Immutable prefix of the OIDC sub claim GitHub sends. Read it from the API: gh api repos/OWNER/REPO --jq '\"repo:\\(.owner.login)@\\(.owner.id)/\\(.name)@\\(.id)\"'."
+  default     = "repo:OrionTH1@95851792/infra-terraform-aws@1329257937"
 }

@@ -4,6 +4,9 @@ data "aws_iam_policy_document" "apply_boundary" {
   # checkov:skip=CKV_AWS_111:See above.
   # checkov:skip=CKV_AWS_109:See above.
   # checkov:skip=CKV_AWS_356:See above.
+  # checkov:skip=CKV_AWS_107:See above.
+  # checkov:skip=CKV_AWS_108:See above.
+  # checkov:skip=CKV_AWS_110:See above.
   # checkov:skip=CKV2_AWS_40:See above.
   statement {
     sid       = "AllowServicesInScope"
