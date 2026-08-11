@@ -45,8 +45,3 @@ variable "container_insights" {
   default     = "enabled"
 }
 
-variable "github_repository" {
-  type        = string
-  description = "GitHub repository in \"owner/repo\" format (no github.com/ prefix), used to scope the GitHub Actions OIDC trust policies."
-  default     = "OrionTH1/ecs-terraform-infra"
-}

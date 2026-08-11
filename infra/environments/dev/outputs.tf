@@ -1,6 +1,6 @@
 output "ecr_repository_url" {
-  description = "URL of the ECR repository. Tag and push the backend image here before the ECS service can start."
-  value       = module.ecr.repository_url
+  description = "URL of the ECR repository the tasks pull from. The repository itself belongs to the bootstrap layer."
+  value       = data.aws_ecr_repository.backend.repository_url
 }
 
 output "alb_dns_name" {
@@ -28,19 +28,4 @@ output "dashboard_url" {
 output "alarm_topic_arn" {
   description = "ARN of the SNS topic that receives alarms and deployment-failure events."
   value       = module.observability.alarm_topic_arn
-}
-
-output "gha_plan_role_arn" {
-  description = "ARN of the read-only IAM role for the terraform-plan GitHub Actions workflow (PRs)."
-  value       = module.github_oidc.plan_role_arn
-}
-
-output "gha_apply_role_arn" {
-  description = "ARN of the read-write IAM role for the terraform-apply GitHub Actions workflow (main branch, gated by the production Environment)."
-  value       = module.github_oidc.apply_role_arn
-}
-
-output "gha_deploy_role_arn" {
-  description = "ARN of the IAM role for the api-deploy GitHub Actions workflow (ECR push + ECS deploy only, runs on every push to main)."
-  value       = module.github_oidc.deploy_role_arn
 }

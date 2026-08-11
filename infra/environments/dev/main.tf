@@ -45,11 +45,8 @@ module "alb" {
   app_port              = var.app_port
 }
 
-module "ecr" {
-  source = "../../modules/ecr"
-
-  project     = var.project
-  environment = var.environment
+data "aws_ecr_repository" "backend" {
+  name = "${var.project}-${var.environment}-backend"
 }
 
 module "rds" {
@@ -66,8 +63,8 @@ module "ecs" {
 
   project                 = var.project
   environment             = var.environment
-  ecr_repository_arn      = module.ecr.repository_arn
-  ecr_repository_url      = module.ecr.repository_url
+  ecr_repository_arn      = data.aws_ecr_repository.backend.arn
+  ecr_repository_url      = data.aws_ecr_repository.backend.repository_url
   image_tag               = var.image_tag
   app_port                = var.app_port
   container_insights      = var.container_insights
@@ -111,18 +108,4 @@ module "observability" {
   log_group_name = module.ecs.log_group_name
 
   db_cluster_identifier = module.rds.cluster_identifier
-}
-
-module "github_oidc" {
-  source = "../../modules/github_oidc"
-
-  project                = var.project
-  environment            = var.environment
-  github_repository      = var.github_repository
-  state_bucket_arn       = "arn:aws:s3:::ecs-portfolio-tfstate-b41d7649"
-  state_key              = "dev/terraform.tfstate"
-  ecr_repository_arn     = module.ecr.repository_arn
-  ecs_service_arn        = module.ecs.service_id
-  ecs_execution_role_arn = module.ecs.execution_role_arn
-  ecs_task_role_arn      = module.ecs.task_role_arn
 }
