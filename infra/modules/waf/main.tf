@@ -79,6 +79,7 @@ resource "aws_wafv2_web_acl_association" "alb" {
 }
 
 resource "aws_cloudwatch_log_group" "waf" {
+  # checkov:skip=CKV_AWS_158:Default CloudWatch Logs encryption. The authorization and cookie headers are redacted before anything is written here, so what remains is request metadata, and a CMK would add cost and key administration for no threat this project faces.
   count = var.enable_logging ? 1 : 0
 
   name              = "aws-waf-logs-${var.project}-${var.environment}"

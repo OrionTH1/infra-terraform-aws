@@ -16,7 +16,7 @@ data "aws_iam_policy_document" "plan_assume_role" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repository}:pull_request"]
+      values   = ["${var.github_subject_prefix}:pull_request"]
     }
   }
 }
@@ -44,6 +44,14 @@ data "aws_iam_policy_document" "plan_permissions" {
       "ecr:Describe*",
       "ecr:GetRepositoryPolicy",
       "ecr:GetLifecyclePolicy",
+      "ecr:ListTagsForResource",
+      "wafv2:Get*",
+      "wafv2:List*",
+      "sns:Get*",
+      "sns:List*",
+      "events:Describe*",
+      "events:List*",
+      "cloudwatch:GetDashboard",
       "iam:Get*",
       "iam:List*",
       "application-autoscaling:Describe*",

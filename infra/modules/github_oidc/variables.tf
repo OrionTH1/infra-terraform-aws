@@ -8,9 +8,14 @@ variable "environment" {
   description = "Environment (dev, staging, prod), used in role names and tags."
 }
 
-variable "github_repository" {
+variable "github_subject_prefix" {
   type        = string
-  description = "GitHub repository in \"owner/repo\" format. Scopes the trust policies so only this repo's workflows can assume the roles."
+  description = "Prefix of the OIDC sub claim, without the trailing context."
+
+  validation {
+    condition     = can(regex("^repo:[^/]+@[0-9]+/.+@[0-9]+$", var.github_subject_prefix))
+    error_message = "github_subject_prefix must look like repo:OWNER@OWNER_ID/REPO@REPO_ID, with no trailing context."
+  }
 }
 
 variable "github_environment" {

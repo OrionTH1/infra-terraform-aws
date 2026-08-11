@@ -10,7 +10,8 @@ resource "aws_s3_bucket" "state" {
   }
 
   tags = {
-    Name = var.state_bucket_name
+    Name        = var.state_bucket_name
+    Environment = "shared"
   }
 }
 

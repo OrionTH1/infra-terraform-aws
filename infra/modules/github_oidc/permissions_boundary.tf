@@ -4,6 +4,9 @@ data "aws_iam_policy_document" "apply_boundary" {
   # checkov:skip=CKV_AWS_111:See above.
   # checkov:skip=CKV_AWS_109:See above.
   # checkov:skip=CKV_AWS_356:See above.
+  # checkov:skip=CKV_AWS_107:See above.
+  # checkov:skip=CKV_AWS_108:See above.
+  # checkov:skip=CKV_AWS_110:See above.
   # checkov:skip=CKV2_AWS_40:See above.
   statement {
     sid       = "AllowServicesInScope"
@@ -53,16 +56,8 @@ data "aws_iam_policy_document" "apply_boundary" {
   }
 
   statement {
-    sid       = "DenyOutsideHomeRegion"
-    effect    = "Deny"
-    actions   = ["*"]
-    resources = ["*"]
-
-    condition {
-      test     = "StringNotEquals"
-      variable = "aws:RequestedRegion"
-      values   = [data.aws_region.current.region]
-    }
+    sid    = "DenyOutsideHomeRegion"
+    effect = "Deny"
 
     not_actions = [
       "iam:*",
@@ -72,6 +67,14 @@ data "aws_iam_policy_document" "apply_boundary" {
       "cloudfront:*",
       "s3:ListAllMyBuckets",
     ]
+
+    resources = ["*"]
+
+    condition {
+      test     = "StringNotEquals"
+      variable = "aws:RequestedRegion"
+      values   = [data.aws_region.current.region]
+    }
   }
 }
 
