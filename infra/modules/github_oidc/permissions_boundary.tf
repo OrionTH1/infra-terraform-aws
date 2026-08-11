@@ -53,16 +53,8 @@ data "aws_iam_policy_document" "apply_boundary" {
   }
 
   statement {
-    sid       = "DenyOutsideHomeRegion"
-    effect    = "Deny"
-    actions   = ["*"]
-    resources = ["*"]
-
-    condition {
-      test     = "StringNotEquals"
-      variable = "aws:RequestedRegion"
-      values   = [data.aws_region.current.region]
-    }
+    sid    = "DenyOutsideHomeRegion"
+    effect = "Deny"
 
     not_actions = [
       "iam:*",
@@ -72,6 +64,14 @@ data "aws_iam_policy_document" "apply_boundary" {
       "cloudfront:*",
       "s3:ListAllMyBuckets",
     ]
+
+    resources = ["*"]
+
+    condition {
+      test     = "StringNotEquals"
+      variable = "aws:RequestedRegion"
+      values   = [data.aws_region.current.region]
+    }
   }
 }
 

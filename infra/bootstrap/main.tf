@@ -3,10 +3,11 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project    = var.project
-      Layer      = "bootstrap"
-      ManagedBy  = "terraform"
-      Repository = var.repository
+      Project     = var.project
+      Environment = var.environment
+      Layer       = "bootstrap"
+      ManagedBy   = "terraform"
+      Repository  = var.repository
     }
   }
 }
@@ -26,8 +27,9 @@ locals {
 module "ecr" {
   source = "../modules/ecr"
 
-  project     = var.project
-  environment = var.environment
+  project      = var.project
+  environment  = var.environment
+  force_delete = false
 }
 
 module "github_oidc" {
