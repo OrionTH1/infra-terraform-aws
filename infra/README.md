@@ -32,73 +32,50 @@ infra/
 └── modules/          # cada um com main/variables/outputs/versions e README próprio
 ```
 
-## Antes do primeiro apply
+## Subir do zero
 
-O bootstrap cria o bucket que guarda o state, inclusive o dele mesmo. Isso é circular, e resolve com uma migração única.
+Precisa de credencial AWS válida, Terraform `~> 1.15` e um daemon Docker rodando.
 
-### 1. Aplicar o bootstrap com state local
+**Bootstrap**, uma vez por conta. Ele cria o bucket que guarda o state, inclusive o dele próprio, então o primeiro apply roda com state local e depois migra:
 
 ```bash
 cd bootstrap
 terraform init -backend=false
 terraform apply
-```
-
-O `-backend=false` faz o Terraform ignorar o `backend.tf` e trabalhar com state local, que é o único jeito quando o bucket ainda não existe.
-
-### 2. Mover o state do bootstrap para o bucket
-
-```bash
 terraform init -migrate-state
 ```
 
-Ele detecta o state local, encontra o backend configurado e pergunta se deve copiar. A partir daqui o bootstrap guarda o próprio state no bucket que ele criou.
-
-Se você mudou `state_bucket_name`, o nome novo precisa ser escrito à mão nos dois `backend.tf`, porque backend não aceita interpolação de variável.
-
-### 3. Publicar a imagem de bootstrap
-
-O `image_tag` do workload tem default `bootstrap`, e o service não sobe sem essa tag existir no registry. O ECR agora vive na camada permanente, então este passo acontece uma vez e a imagem sobrevive aos ciclos de destroy e apply do workload.
+**A imagem de bootstrap**, também uma vez. O workload procura a tag `bootstrap` e o service não sobe sem ela:
 
 ```bash
 REPO_URL=$(terraform output -raw ecr_repository_url)
-
-aws ecr get-login-password --region us-east-1 \
-  | docker login --username AWS --password-stdin "${REPO_URL%/*}"
-
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin "${REPO_URL%/*}"
 docker build -t "${REPO_URL}:bootstrap" ../../backend
 docker push "${REPO_URL}:bootstrap"
 ```
 
-### Requisitos
+**O workload**, quantas vezes quiser:
 
 ```bash
-aws sts get-caller-identity    # precisa devolver uma identidade
-terraform version              # ~> 1.15
-docker version                 # daemon rodando, para a imagem de bootstrap
-```
-
-## Aplicar o workload
-
-```bash
-cd environments/dev
+cd ../environments/dev
 terraform init
 terraform apply
 ```
 
-Leva de 10 a 15 minutos, e o Aurora é o gargalo. Deu certo quando o `terraform plan` seguinte reporta `No changes`.
+São 78 recursos e leva de 10 a 15 minutos, com o Aurora sendo o gargalo. No fim, `terraform plan` reporta `No changes` e o health check responde no DNS do balanceador.
 
-O workload lê o repositório de imagem com `data "aws_ecr_repository"`, então ele falha de imediato e com mensagem clara se o bootstrap não tiver rodado antes.
-
-### Destruir
+## Derrubar
 
 ```bash
+cd environments/dev
 terraform destroy
 ```
 
-Isso derruba só o workload. O bucket de state, o ECR com as imagens e as roles do CI continuam de pé, que é o ponto de terem state separado: depois do destroy, um PR aberto continua recebendo comentário de plan, e o apply seguinte pode correr pela própria pipeline.
+Só o workload cai. Bucket de state, ECR com as imagens e as três roles do CI continuam de pé, que é o motivo de terem state separado: as variáveis do GitHub seguem válidas, um PR aberto continua recebendo comentário de plan, e o apply seguinte pode sair pela própria pipeline.
 
-Uma assinatura SNS não confirmada sobrevive ao destroy: ela sai do state e continua na conta, desaparecendo sozinha em cerca de três dias.
+Para subir de novo, só o `terraform apply` do workload. A imagem já está no registry.
+
+Uma assinatura SNS não confirmada sobrevive ao destroy. Ela sai do state, continua na conta e desaparece sozinha em cerca de três dias.
 
 ## Depois do apply, na mão
 
