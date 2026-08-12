@@ -22,5 +22,5 @@ app.use(
 globalRoutes(app);
 
 app.listen(SERVER_PORT, () => {
-  logger.info({ port: SERVER_PORT }, 'Server started');
+  logger.info({ port: SERVER_PORT }, 'Server started and accepting requests');
 });
